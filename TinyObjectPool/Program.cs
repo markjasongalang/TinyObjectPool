@@ -2,35 +2,40 @@
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var pool = new ObjectPool<MyObject>(
             factory: () => new MyObject(),
-            maxSize: 5);
+            maxSize: 1);
 
-        MyObject a = pool.Rent();
-        Console.WriteLine(pool.Count);
+        // TODO: Check if thread-safe
+        // The previous one is fire-and-forget approach that's why the task is not holding onto the object.
 
-        MyObject b = pool.Rent();
-        Console.WriteLine(pool.Count);
+        Task task1 = Task.Run(async () =>
+        {
+            MyObject obj1 = pool.Rent();
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Rented object");
 
-        pool.Return(a);
-        Console.WriteLine(pool.Count);
+            await Task.Delay(2000);
 
-        MyObject c = pool.Rent();
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Returning object");
+            pool.Return(obj1);
+        });
 
-        // Reference identity check (same object in memory)
-        bool isSameInstance = ReferenceEquals(a, c);
-        Console.WriteLine($"Is exact same object? {isSameInstance}");
+        await Task.Delay(100);
 
-        MyObject d = pool.Rent();
-        MyObject e = pool.Rent();
-        MyObject f = pool.Rent();
-        Console.WriteLine($"Rented objects at this point: {pool.CreatedObjectCount}");
+        Task task2 = Task.Run(async () =>
+        {
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Attempting to Rent...");
 
-        pool.Return(d);
-        MyObject g = pool.Rent(); // This will wait indefinitely until an object is returned
-        Console.WriteLine($"Rented objects at this point: {pool.CreatedObjectCount}");
+            // This should block
+            MyObject obj2 = pool.Rent();
+
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Successfully Rented object!");
+            pool.Return(obj2);
+        });
+
+        await Task.WhenAll(task1, task2); // Run tasks simultaneously
     }
 }
 

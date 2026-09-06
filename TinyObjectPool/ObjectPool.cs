@@ -24,11 +24,14 @@ public class ObjectPool<T> where T : class
 
     public T Rent()
     {
+        Console.WriteLine("Waiting to acquire lock...");
          // Block if max capacity is reached and no idle objects are available
         _semaphore.Wait();
 
         lock(_lock)
         {
+            Console.WriteLine("Lock acquired");
+
             // Reuse an idle object if available
             if (Count > 0)
             {
@@ -56,6 +59,7 @@ public class ObjectPool<T> where T : class
 
         // Release the semaphore so a waiting Rent() thread can wake up
         _semaphore.Release();
+        Console.WriteLine("Lock released!");
     }
 
     public int Count
