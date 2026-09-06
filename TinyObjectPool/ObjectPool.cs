@@ -1,19 +1,24 @@
 ﻿namespace TinyObjectPool;
 
-public class ObjectPool<T> where T : class, new() // Compiler needs to know 'T' has a parameterless constructor
+/// <summary>
+/// Should only be for object lifetime management
+/// </summary>
+public class ObjectPool<T> where T : class
 {
-    private readonly Stack<T> _objectPool;
+    private readonly Stack<T> _objectPool = new();
+    private readonly Func<T> _factory;
 
-    public ObjectPool()
+    // Accept a factory delegate
+    public ObjectPool(Func<T> factory)
     {
-        _objectPool = new Stack<T>();
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
     }
 
     public T? Rent()
     {
         if (_objectPool.Count == 0)
         {
-            _objectPool.Push(new T());
+            return _factory(); // Delegate creation to the factory
         }
 
         return _objectPool.Pop();

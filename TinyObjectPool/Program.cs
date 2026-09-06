@@ -4,7 +4,8 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var pool = new ObjectPool<MyObject>();
+        var pool = new ObjectPool<MyObject>(
+            () => new MyObject());
 
         MyObject? a = pool.Rent();
         Console.WriteLine(pool.Count);
