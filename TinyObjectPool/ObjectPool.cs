@@ -7,33 +7,76 @@ public class ObjectPool<T> where T : class
 {
     private readonly Stack<T> _objectPool = new();
     private readonly Func<T> _factory;
+    private readonly int _maxSize;
+    private readonly object _lock = new();
+    private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
+    private int _createdCount;
 
     // Accept a factory delegate
-    public ObjectPool(Func<T> factory)
+    public ObjectPool(Func<T> factory, int maxSize)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        _maxSize = maxSize;
+
+        // Allows up to _maxSize concurrent rents before blocking
+        _semaphore = new SemaphoreSlim(maxSize, maxSize);
     }
 
-    public T? Rent()
+    public T Rent()
     {
-        if (_objectPool.Count == 0)
+         // Block if max capacity is reached and no idle objects are available
+        _semaphore.Wait();
+
+        lock(_lock)
         {
+            // Reuse an idle object if available
+            if (Count > 0)
+            {
+                return _objectPool.Pop();
+            }
+
+            // Otherwise, create a new object (guaranteed <= _maxSize by semaphore)
+            _createdCount++;
             return _factory(); // Delegate creation to the factory
         }
-
-        return _objectPool.Pop();
     }
 
     public void Return(T item)
     {
-        // TODO: Bounded capacity
-        // - Excess objects beyond max size should be disposed
+        ArgumentNullException.ThrowIfNull(item);
 
         // TODO: Clean State resets
         // - When object is returned it must be cleansed of old state
 
-        _objectPool.Push(item);
+        lock (_lock)
+        {
+            // Push returned object back to pool for reuse
+            _objectPool.Push(item);
+        }
+
+        // Release the semaphore so a waiting Rent() thread can wake up
+        _semaphore.Release();
     }
 
-    public int Count => _objectPool.Count;
+    public int Count
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _objectPool.Count;
+            }
+        }
+    }
+
+    public int CreatedObjectCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _createdCount;
+            }
+        }
+    }
 }
