@@ -4,12 +4,16 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var pool = new ObjectPool<MyObject>(5);
+        var pool = new ObjectPool<MyObject>();
 
         MyObject? a = pool.Rent();
+        Console.WriteLine(pool.Count);
+
         MyObject? b = pool.Rent();
+        Console.WriteLine(pool.Count);
 
         pool.Return(a);
+        Console.WriteLine(pool.Count);
 
         MyObject? c = pool.Rent();
 
