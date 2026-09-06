@@ -6,11 +6,15 @@ public class Program
     {
         var pool = new ObjectPool<MyObject>(
             factory: () => new MyObject(),
-            maxSize: 1);
+            maxSize: 10);
 
-        // TODO: Check if thread-safe
-        // The previous one is fire-and-forget approach that's why the task is not holding onto the object.
+        //await TestIfThreadSafe(pool);
+        await TestObjectReset(pool);
+        
+    }
 
+    public static async Task TestIfThreadSafe(ObjectPool<MyObject> pool)
+    {
         Task task1 = Task.Run(async () =>
         {
             MyObject obj1 = pool.Rent();
@@ -37,9 +41,28 @@ public class Program
 
         await Task.WhenAll(task1, task2); // Run tasks simultaneously
     }
+
+    public static async Task TestObjectReset(ObjectPool<MyObject> pool)
+    {
+        MyObject obj = pool.Rent();
+
+        obj.Name = "Jason";
+        pool.Return(obj);
+
+        MyObject obj2 = pool.Rent();
+        Console.WriteLine($"{nameof(obj2)}.name = {obj.Name}"); // Should be blank
+    }
 }
 
-public class MyObject
+public class MyObject : IResettable
 {
-    // Empty for now
+    public string Name { get; set; }
+
+    /// <summary>
+    /// Prevent subtle data leaks or unexpected state bugs
+    /// </summary>
+    public void Reset()
+    {
+        Name = string.Empty;
+    }
 }

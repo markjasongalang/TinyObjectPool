@@ -6,17 +6,19 @@
 public class ObjectPool<T> where T : class
 {
     private readonly Stack<T> _objectPool = new();
-    private readonly Func<T> _factory;
+    private readonly Func<T> _factory; // Func<T> expects to return a brand-new object (without taking inputs)
+    private readonly Action<T>? _reset; // Action<T> accepts the item to reset
     private readonly int _maxSize;
     private readonly object _lock = new();
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
     private int _createdCount;
 
     // Accept a factory delegate
-    public ObjectPool(Func<T> factory, int maxSize)
+    public ObjectPool(Func<T> factory, int maxSize, Action<T>? reset = null)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _maxSize = maxSize;
+        _reset = reset;
 
         // Allows up to _maxSize concurrent rents before blocking
         _semaphore = new SemaphoreSlim(maxSize, maxSize);
@@ -24,14 +26,11 @@ public class ObjectPool<T> where T : class
 
     public T Rent()
     {
-        Console.WriteLine("Waiting to acquire lock...");
          // Block if max capacity is reached and no idle objects are available
         _semaphore.Wait();
 
         lock(_lock)
         {
-            Console.WriteLine("Lock acquired");
-
             // Reuse an idle object if available
             if (Count > 0)
             {
@@ -48,8 +47,15 @@ public class ObjectPool<T> where T : class
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        // TODO: Clean State resets
-        // - When object is returned it must be cleansed of old state
+        // If object is IResettable, call it automatically
+        if (item is IResettable resettable)
+        {
+            // Ensures callers don't even have to pass a reset delegate
+            resettable.Reset();
+        }
+
+        // Otherwise, invoke custom reset action delegate if provided
+        _reset?.Invoke(item); // Pass existing item
 
         lock (_lock)
         {
@@ -59,7 +65,6 @@ public class ObjectPool<T> where T : class
 
         // Release the semaphore so a waiting Rent() thread can wake up
         _semaphore.Release();
-        Console.WriteLine("Lock released!");
     }
 
     public int Count
