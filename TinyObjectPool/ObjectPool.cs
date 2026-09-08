@@ -8,45 +8,37 @@ public class ObjectPool<T> where T : class
     private readonly Stack<T> _objectPool = new();
     private readonly Func<T> _factory; // Func<T> expects to return a brand-new object (without taking inputs)
     private readonly Action<T>? _reset; // Action<T> accepts the item to reset
-    private readonly int _maxSize;
     private readonly object _lock = new();
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
-    private int _createdCount;
 
     // Accept a factory delegate
     public ObjectPool(Func<T> factory, int maxSize, Action<T>? reset = null)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
-        _maxSize = maxSize;
         _reset = reset;
 
         // Allows up to _maxSize concurrent rents before blocking
         _semaphore = new SemaphoreSlim(maxSize, maxSize);
     }
 
-    public T Rent()
+    public RentedObject<T> Rent()
     {
          // Block if max capacity is reached and no idle objects are available
         _semaphore.Wait();
 
+        T item;
         lock(_lock)
         {
             // Reuse an idle object if available
-            if (Count > 0)
-            {
-                return _objectPool.Pop();
-            }
-
-            // Otherwise, create a new object (guaranteed <= _maxSize by semaphore)
-            _createdCount++;
-            return _factory(); // Delegate creation to the factory
+            // Otherwise, create a new object (guaranteed <= _maxSize by semaphore);
+            item = _objectPool.Count > 0 ? _objectPool.Pop() : _factory(); // Delegate creation to the factory
         }
+
+        return new RentedObject<T>(this, item);
     }
 
-    public void Return(T item)
+    internal void Return(T item)
     {
-        ArgumentNullException.ThrowIfNull(item);
-
         // If object is IResettable, call it automatically
         if (item is IResettable resettable)
         {
@@ -74,17 +66,6 @@ public class ObjectPool<T> where T : class
             lock (_lock)
             {
                 return _objectPool.Count;
-            }
-        }
-    }
-
-    public int CreatedObjectCount
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _createdCount;
             }
         }
     }

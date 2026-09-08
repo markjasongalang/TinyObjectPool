@@ -4,26 +4,33 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
+        //await TestIfThreadSafe();
+        //await TestObjectReset();
+
         var pool = new ObjectPool<MyObject>(
             factory: () => new MyObject(),
             maxSize: 10);
 
-        //await TestIfThreadSafe(pool);
-        await TestObjectReset(pool);
-        
+        using (RentedObject<MyObject> obj = pool.Rent())
+        {
+            Console.WriteLine(pool.Count);
+        }
     }
 
-    public static async Task TestIfThreadSafe(ObjectPool<MyObject> pool)
+    public static async Task TestIfThreadSafe()
     {
+        var pool = new ObjectPool<MyObject>(
+            factory: () => new MyObject(),
+            maxSize: 1); // Set to 1 for testing below
+
         Task task1 = Task.Run(async () =>
         {
-            MyObject obj1 = pool.Rent();
+            using RentedObject<MyObject> obj1 = pool.Rent();
             Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Rented object");
 
             await Task.Delay(2000);
 
             Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Returning object");
-            pool.Return(obj1);
         });
 
         await Task.Delay(100);
@@ -33,24 +40,25 @@ public class Program
             Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Attempting to Rent...");
 
             // This should block
-            MyObject obj2 = pool.Rent();
+            using RentedObject<MyObject> obj2 = pool.Rent();
 
             Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Successfully Rented object!");
-            pool.Return(obj2);
         });
 
         await Task.WhenAll(task1, task2); // Run tasks simultaneously
     }
 
-    public static async Task TestObjectReset(ObjectPool<MyObject> pool)
+    public static async Task TestObjectReset()
     {
-        MyObject obj = pool.Rent();
+        var pool = new ObjectPool<MyObject>(
+            factory: () => new MyObject(),
+            maxSize: 10);
 
-        obj.Name = "Jason";
-        pool.Return(obj);
+        using RentedObject<MyObject> obj = pool.Rent();
+        obj.Value.Name = "Jason";
 
-        MyObject obj2 = pool.Rent();
-        Console.WriteLine($"{nameof(obj2)}.name = {obj.Name}"); // Should be blank
+        RentedObject<MyObject> obj2 = pool.Rent();
+        Console.WriteLine($"{nameof(obj2)}.name = {obj2.Value.Name}"); // Should be blank
     }
 }
 
