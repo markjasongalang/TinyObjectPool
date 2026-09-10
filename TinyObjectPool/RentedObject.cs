@@ -8,27 +8,21 @@
 /// </summary>
 public struct RentedObject<T> : IDisposable where T : class
 {
-    private readonly ObjectPool<T> _pool;
-    private bool _isDisposed;
+    private ObjectPool<T>? _pool;
 
     public T Value { get; }
 
     internal RentedObject(ObjectPool<T> pool, T value)
     {
         _pool = pool;
-        _isDisposed = false;
-
         Value = value;
     }
 
     public void Dispose()
     {
-        if (_isDisposed || _pool == null)
-        {
-            return; // Idempotent: Prevents double-returning to the pool
-        }
-
-        _isDisposed = true;
-        _pool.Return(Value);
+        // Atomatically sets _pool to null and returns the previous instance.
+        // If Dispose() was already called, targetPool is null and execution exits safely.
+        ObjectPool<T>? targetPool = Interlocked.Exchange(ref _pool, null);
+        targetPool?.Return(Value);
     }
 }
