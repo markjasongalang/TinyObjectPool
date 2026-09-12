@@ -13,8 +13,10 @@ public class ObjectPool<T> : IDisposable where T : class
     private readonly int _maxSize;
     private readonly Action<T>? _reset; // Action<T> accepts the item to reset
     private readonly TimeSpan _defaultTimeout;
-    private readonly object _lock = new();
+    private readonly object _lock = new(); // Always private and dedicated
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
+
+    private bool _isDisposed;
 
     public int Count
     {
@@ -51,6 +53,9 @@ public class ObjectPool<T> : IDisposable where T : class
     /// <param name="timeout">Optional timeout duration (allow callers to override when needed).</param>
     public RentedObject<T> Rent(TimeSpan? timeout = null)
     {
+        // Guard against accessing a disposed pool
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+
         TimeSpan effectiveTimeout = timeout ?? _defaultTimeout;
 
          // Block if max capacity is reached and no idle objects are available
@@ -63,8 +68,11 @@ public class ObjectPool<T> : IDisposable where T : class
         }
 
         T item;
-        lock (_lock)
+        lock (_lock) // We need to lock here since Stack<T> is not thread-safe
         {
+            // Double check disposal inside lock frame
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
+
             // Reuse an idle object if available
             // Otherwise, create a new object (guaranteed <= _maxSize by semaphore);
             item = _objectPool.Count > 0 ? _objectPool.Pop() : _factory(); // Delegate creation to the factory
@@ -79,18 +87,29 @@ public class ObjectPool<T> : IDisposable where T : class
         // not a hard runtime constraint that's why we still need to check if T is null below.
         ArgumentNullException.ThrowIfNull(item);
 
-        // If object is IResettable, call it automatically
-        if (item is IResettable resettable)
+        lock (_lock) // We need to lock here since Stack<T> is not thread-safe
         {
-            // Ensures callers don't even have to pass a reset delegate
-            resettable.Reset();
-        }
+            // If the pool was disposed while an object was rented, dispose the returning object
+            if (_isDisposed)
+            {
+                if (item is IDisposable disposableItem)
+                {
+                    disposableItem.Dispose();
+                }
 
-        // Otherwise, invoke custom reset action delegate if provided
-        _reset?.Invoke(item); // Pass existing item
+                return;
+            }
 
-        lock (_lock)
-        {
+            // If object is IResettable, call it automatically
+            if (item is IResettable resettable)
+            {
+                // Ensures callers don't even have to pass a reset delegate
+                resettable.Reset();
+            }
+
+            // Otherwise, invoke custom reset action delegate if provided
+            _reset?.Invoke(item); // Pass existing item
+
             // Push returned object back to pool for reuse
             _objectPool.Push(item);
         }
@@ -101,8 +120,27 @@ public class ObjectPool<T> : IDisposable where T : class
 
     public void Dispose()
     {
-        // I think we should just clear the list here or not?
+        lock (_lock)
+        {
+            if (_isDisposed)
+            {
+                return; // Idempotent check
+            }
 
-        throw new NotImplementedException();
+            _isDisposed = true;
+
+            // Dispose any pooled objects sitting in the stack if T is IDisposable
+            while (_objectPool.Count > 0)
+            {
+                T item = _objectPool.Pop();
+                if (item is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+
+            // Dispose synchronization primitive
+            _semaphore.Dispose();
+        }
     }
 }

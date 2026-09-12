@@ -6,24 +6,17 @@ public class Program
     {
         //await TestIfThreadSafe();
         //await TestObjectReset();
-        await TestSemaphoreTimeout();
+        //await TestSemaphoreTimeout();
+        //await TestRentOnDisposedPool();
 
-        //using var pool = new ObjectPool<MyObject>(
-        //    factory: () => new MyObject(),
-        //    maxSize: 10);
+        using var pool = new ObjectPool<MyObject>(
+            factory: () => new MyObject(),
+            maxSize: 10);
 
-        //using (RentedObject<MyObject> obj = pool.Rent())
-        //{
-        //    Console.WriteLine(pool.Count);
+        // TODO: Test return if an object was rented first and then the pool was disposed
+        // TODO: Test pool dispose and then rent an object
 
-        //    // What if we dispose the pool here? 
-        //    // Just before returning the rented object
-
-        //    // Once we dispose the object, it will call the Return(T) but the pool is already destroyed
-        //    // But there's a condition inside the Dispose() which checks if the pool is null (the idempotent one)
-        //}
-
-        
+        // TODO: Benchmarks
     }
 
     public static async Task TestIfThreadSafe()
@@ -90,6 +83,17 @@ public class Program
         using RentedObject<MyObject> obj2 = pool.Rent();
 
         Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 successfully rented");
+    }
+
+    public static async Task TestRentOnDisposedPool()
+    {
+        using var pool = new ObjectPool<MyObject>(
+            factory: () => new MyObject(),
+            maxSize: 10);
+
+        // Test if someone tries to call Rent() on a disposed pool
+        pool.Dispose();
+        using RentedObject<MyObject> obj = pool.Rent(); // Should throw an exception
     }
 }
 
