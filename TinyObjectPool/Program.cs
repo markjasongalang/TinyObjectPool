@@ -5,7 +5,6 @@ public class Program
     public static async Task Main(string[] args)
     {
         //await TestIfThreadSafe();
-        //await TestObjectReset();
         //await TestSemaphoreTimeout();
         //await TestRentOnDisposedPool();
 
@@ -13,10 +12,12 @@ public class Program
             factory: () => new MyObject(),
             maxSize: 10);
 
-        // TODO: Test return if an object was rented first and then the pool was disposed
-        // TODO: Test pool dispose and then rent an object
+        // TODO: Unit tests (MSTest - Microsoft Testing Platform)
+        // - Test return if an object was rented first and then the pool was disposed
+        // - Test pool dispose and then rent an object
 
         // TODO: Benchmarks
+
     }
 
     public static async Task TestIfThreadSafe()
@@ -48,19 +49,6 @@ public class Program
         });
 
         await Task.WhenAll(task1, task2); // Run tasks simultaneously
-    }
-
-    public static async Task TestObjectReset()
-    {
-        var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
-            maxSize: 10);
-
-        using RentedObject<MyObject> obj = pool.Rent();
-        obj.Value.Name = "Jason";
-
-        RentedObject<MyObject> obj2 = pool.Rent();
-        Console.WriteLine($"{nameof(obj2)}.name = {obj2.Value.Name}"); // Should be blank
     }
 
     public static async Task TestSemaphoreTimeout()

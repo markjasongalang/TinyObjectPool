@@ -1,0 +1,31 @@
+﻿namespace TinyObjectPool.Tests
+{
+    [TestClass]
+    public sealed class BasicTests
+    {
+        /// <remarks>
+        /// The AAA (Arrange, Act, Assert) pattern is a common way of writing unit tests for a
+        /// method test.
+        /// Refer to https://learn.microsoft.com/en-us/visualstudio/test/unit-test-basics?view=visualstudio
+        /// </remarks>
+        [TestMethod]
+        public void TestObjectReset()
+        {
+            // Arrange
+            var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 1);
+
+            // Act
+            using (RentedObject<MyObject> obj1 = pool.Rent())
+            {
+                obj1.Value.Name = "Jason";
+            }
+
+            RentedObject<MyObject> obj2 = pool.Rent();
+
+            // Assert
+            Assert.IsTrue(string.IsNullOrEmpty(obj2.Value.Name) && obj2.Value.Name != null);
+        }
+    }
+}

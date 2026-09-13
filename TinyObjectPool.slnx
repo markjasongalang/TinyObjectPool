@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="TinyObjectPool.Tests/TinyObjectPool.Tests.csproj" Id="77f7e21c-38dc-4cae-8023-595db764206d" />
   <Project Path="TinyObjectPool/TinyObjectPool.csproj" />
 </Solution>
