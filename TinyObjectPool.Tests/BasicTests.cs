@@ -118,5 +118,21 @@
                 using RentedObject<MyObject> obj = pool.Rent();
             });
         }
+
+        [TestMethod]
+        public async Task Dispose_RentedObjectNotReturned_PoolDisposesObjects()
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+
+            // Explicitly didn't include 'using' keyword below so the object will not be returned
+            RentedObject<MyObject> obj = pool.Rent();
+
+            pool.Dispose();
+
+            Assert.AreEqual(0, pool.Count);
+            Assert.IsTrue(string.IsNullOrEmpty(obj.Value.Name));
+        }
     }
 }

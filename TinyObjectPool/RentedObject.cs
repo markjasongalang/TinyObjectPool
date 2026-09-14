@@ -31,7 +31,7 @@ public struct RentedObject<T> : IDisposable where T : class
     /// </summary>
     public void Dispose()
     {
-        // Atomatically sets _pool to null and returns the previous instance.
+        // Automatically sets _pool to null and returns the previous instance.
         // If Dispose() was already called, targetPool is null and execution exits safely.
         ObjectPool<T>? targetPool = Interlocked.Exchange(ref _pool, null);
         targetPool?.Return(Value);

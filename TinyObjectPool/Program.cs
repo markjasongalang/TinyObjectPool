@@ -8,10 +8,7 @@ public class Program
             factory: () => new MyObject(),
             maxSize: 10);
 
-        // TODO: Unit tests (MSTest - Microsoft Testing Platform)
-        // - Test return if an object was rented first and then the pool was disposed
-        // - Test pool dispose and then rent an object
-
+        // TODO: Test pool dispose and then rent an object
 
         // TODO: Benchmarks
 
