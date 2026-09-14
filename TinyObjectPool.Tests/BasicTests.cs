@@ -103,5 +103,20 @@
 
             Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 successfully rented");
         }
+
+        [TestMethod]
+        public async Task Rent_RentOnDisposedPool_ThrowObjectDisposedException()
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+
+            pool.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() =>
+            {
+                using RentedObject<MyObject> obj = pool.Rent();
+            });
+        }
     }
 }

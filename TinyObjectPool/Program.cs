@@ -16,17 +16,6 @@ public class Program
         // TODO: Benchmarks
 
     }
-
-    public static async Task TestRentOnDisposedPool()
-    {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
-            maxSize: 10);
-
-        // Test if someone tries to call Rent() on a disposed pool
-        pool.Dispose();
-        using RentedObject<MyObject> obj = pool.Rent(); // Should throw an exception
-    }
 }
 
 public class MyObject : IResettable
