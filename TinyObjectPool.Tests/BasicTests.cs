@@ -4,12 +4,16 @@
     public sealed class BasicTests
     {
         /// <remarks>
+        /// Test names - naming convention
+        /// UnitOfWork_Scenario_ExpectedResult
+        /// Refer to https://canro91.github.io/2021/04/12/UnitTestNamingConventions/
+        /// 
         /// The AAA (Arrange, Act, Assert) pattern is a common way of writing unit tests for a
         /// method test.
         /// Refer to https://learn.microsoft.com/en-us/visualstudio/test/unit-test-basics?view=visualstudio
         /// </remarks>
         [TestMethod]
-        public void TestObjectReset()
+        public void Reset_ObjectReturnedInPoolOfOne_ReturnsCleanObject()
         {
             // Arrange
             var pool = new ObjectPool<MyObject>(
