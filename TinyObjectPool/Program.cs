@@ -8,7 +8,7 @@ public class Program
             factory: () => new MyObject(),
             maxSize: 10);
 
-        // TODO: Test pool dispose and then rent an object
+
 
         // TODO: Benchmarks
 

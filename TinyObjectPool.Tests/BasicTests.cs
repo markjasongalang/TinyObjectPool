@@ -120,7 +120,7 @@
         }
 
         [TestMethod]
-        public async Task Dispose_RentedObjectNotReturned_PoolDisposesObjects()
+        public void Dispose_RentedObjectNotReturned_PoolDisposesObjects()
         {
             using var pool = new ObjectPool<MyObject>(
                 factory: () => new MyObject(),
@@ -133,6 +133,21 @@
 
             Assert.AreEqual(0, pool.Count);
             Assert.IsTrue(string.IsNullOrEmpty(obj.Value.Name));
+        }
+
+        [TestMethod]
+        public void Dispose_RentObjectOnDisposedPool_ThrowsObjectDisposedException()
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+
+            pool.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() =>
+            {
+                using RentedObject<MyObject> obj = pool.Rent();
+            });
         }
     }
 }
