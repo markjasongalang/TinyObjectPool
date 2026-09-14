@@ -17,28 +17,6 @@ public class Program
 
     }
 
-    public static async Task TestSemaphoreTimeout()
-    {
-        var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
-            maxSize: 1);
-
-        // Object 1
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 trying to rent");
-
-        RentedObject <MyObject> obj1 = pool.Rent(); // Intentionally doesn't include 'using'
-
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 successfully rented");
-
-        // Object 2
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 trying to rent");
-
-        // An exception should be thrown here because the object above wasn't returned
-        using RentedObject<MyObject> obj2 = pool.Rent();
-
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 successfully rented");
-    }
-
     public static async Task TestRentOnDisposedPool()
     {
         using var pool = new ObjectPool<MyObject>(

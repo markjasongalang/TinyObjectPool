@@ -71,5 +71,37 @@
 
             await Task.WhenAll(task1, task2);
         }
+
+        [TestMethod]
+        public async Task Rent_NotReturnRentedObject_ThrowTimeoutException()
+        {
+            var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 1);
+
+            // Object 1
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 trying to rent");
+
+            RentedObject<MyObject> obj1 = pool.Rent(); // Intentionally doesn't include 'using'
+
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 successfully rented");
+
+            Assert.AreEqual(0, pool.Count);
+
+            // Object 2
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 trying to rent");
+
+            // Asserts that the block inside throws and exception of type TimeoutException
+            // and throws AssertFailedException if code does not throw exception or throws
+            // exception of type other than TimeoutException.
+            // Refer to https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.testtools.unittesting.assert.throws?view=mstest-net-4.4
+            Assert.Throws<TimeoutException>(() =>
+            {
+                // An exception should be thrown here because the object above wasn't returned
+                using RentedObject<MyObject> obj2 = pool.Rent();
+            });
+
+            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 successfully rented");
+        }
     }
 }
