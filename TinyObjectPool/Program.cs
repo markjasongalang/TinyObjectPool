@@ -4,10 +4,6 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        //await TestIfThreadSafe();
-        //await TestSemaphoreTimeout();
-        //await TestRentOnDisposedPool();
-
         using var pool = new ObjectPool<MyObject>(
             factory: () => new MyObject(),
             maxSize: 10);
@@ -16,39 +12,9 @@ public class Program
         // - Test return if an object was rented first and then the pool was disposed
         // - Test pool dispose and then rent an object
 
+
         // TODO: Benchmarks
 
-    }
-
-    public static async Task TestIfThreadSafe()
-    {
-        var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
-            maxSize: 1); // Set to 1 for testing below
-
-        Task task1 = Task.Run(async () =>
-        {
-            using RentedObject<MyObject> obj1 = pool.Rent();
-            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Rented object");
-
-            await Task.Delay(2000);
-
-            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Returning object");
-        });
-
-        await Task.Delay(100);
-
-        Task task2 = Task.Run(async () =>
-        {
-            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Attempting to Rent...");
-
-            // This should block
-            using RentedObject<MyObject> obj2 = pool.Rent();
-
-            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Successfully Rented object!");
-        });
-
-        await Task.WhenAll(task1, task2); // Run tasks simultaneously
     }
 
     public static async Task TestSemaphoreTimeout()
