@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="TinyObjectPool.Benchmarks/TinyObjectPool.Benchmarks.csproj" Id="9c8c0b1e-03f0-4eb6-aeb3-c1516f780019" />
   <Project Path="TinyObjectPool.Tests/TinyObjectPool.Tests.csproj" Id="77f7e21c-38dc-4cae-8023-595db764206d" />
   <Project Path="TinyObjectPool/TinyObjectPool.csproj" />
 </Solution>
