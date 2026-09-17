@@ -4,10 +4,19 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
-            maxSize: 10);
+        try
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 0);
 
+        
+            using RentedObject<MyObject> obj = pool.Rent();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error: {e}");
+        }
     }
 }
 

@@ -153,7 +153,6 @@
         [TestMethod]
         public void Rent_InstantiateObjectWithUsingStatement_AutomaticallyReturnsToPool()
         {
-            // We'll test automatic return
             using var pool = new ObjectPool<MyObject>(
                 factory: () => new MyObject(),
                 maxSize: 1);
@@ -168,6 +167,17 @@
             }
 
             Assert.AreEqual(1, pool.Count);
+        }
+
+        [TestMethod]
+        public void ObjectPool_CreatePoolWithZeroMaxSize_ThrowsException()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                using var pool = new ObjectPool<MyObject>(
+                    factory: () => new MyObject(),
+                    maxSize: 0);
+            });
         }
     }
 }
