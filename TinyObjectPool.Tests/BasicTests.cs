@@ -149,5 +149,25 @@
                 using RentedObject<MyObject> obj = pool.Rent();
             });
         }
+
+        [TestMethod]
+        public void Rent_InstantiateObjectWithUsingStatement_AutomaticallyReturnsToPool()
+        {
+            // We'll test automatic return
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 1);
+
+            // Use known, hard-coded, pre-calculated values instead
+            // Refer to https://dev.to/canro91/4-common-mistakes-when-writing-your-first-unit-tests-44e9
+            Assert.AreEqual(0, pool.Count);
+
+            using (RentedObject<MyObject> myObj = pool.Rent())
+            {
+                // Some actual operations here
+            }
+
+            Assert.AreEqual(1, pool.Count);
+        }
     }
 }
