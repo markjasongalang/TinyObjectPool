@@ -4,6 +4,7 @@
 
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using Microsoft.CodeAnalysis;
 
@@ -28,16 +29,25 @@ namespace TinyObjectPool.Benchmarks
     /// [Host]     : .NET 10.0.12 (10.0.1226.42308), X64 RyuJIT AVX2
     /// DefaultJob : .NET 10.0.12 (10.0.1226.42308), X64 RyuJIT AVX2
     /// 
-    /// | Method        | N   | Mean        | Error      | StdDev     | Median      | Ratio | RatioSD | Gen0   | Gen1   | Allocated | Alloc Ratio |
-    /// |-------------- |---- |------------:|-----------:|-----------:|------------:|------:|--------:|-------:|-------:|----------:|------------:|
-    /// | StringJoin    | 5   |    73.36 ns |   1.315 ns |   1.165 ns |    72.93 ns |  1.00 |    0.02 | 0.0162 |      - |     136 B |        1.00 |
-    /// | StringBuilder | 5   |    59.72 ns |   3.559 ns |  10.494 ns |    62.05 ns |  0.81 |    0.14 | 0.0191 |      - |     160 B |        1.18 |
-    /// |               |     |             |            |            |             |       |         |        |        |           |             |
-    /// | StringJoin    | 50  |   567.21 ns |  22.636 ns |  66.742 ns |   593.29 ns |  1.02 |    0.18 | 0.0582 |      - |     488 B |        1.00 |
-    /// | StringBuilder | 50  |   525.39 ns |  16.689 ns |  47.885 ns |   530.99 ns |  0.94 |    0.16 | 0.1526 |      - |    1280 B |        2.62 |
-    /// |               |     |             |            |            |             |       |         |        |        |           |             |
-    /// | StringJoin    | 500 | 8,291.79 ns | 197.048 ns | 571.672 ns | 8,319.87 ns |  1.01 |    0.10 | 1.3428 |      - |   11288 B |        1.00 |
-    /// | StringBuilder | 500 | 5,650.97 ns | 208.777 ns | 615.584 ns | 5,658.66 ns |  0.69 |    0.09 | 1.6251 | 0.0458 |   13648 B |        1.21 |
+    /// | Method                      | N    | Mean          | Error        | StdDev        | Ratio | RatioSD | Gen0    | Allocated | Alloc Ratio |
+    /// |---------------------------- |----- |--------------:|-------------:|--------------:|------:|--------:|--------:|----------:|------------:|
+    /// | CreateObjectsWithoutPooling | 5    |      28.78 ns |     1.229 ns |      3.605 ns |  1.02 |    0.18 |  0.0143 |     120 B |        1.00 |
+    /// | CreateObjectsWithPooling    | 5    |     264.39 ns |     9.071 ns |     26.746 ns |  9.33 |    1.53 |       - |         - |        0.00 |
+    /// |                             |      |               |              |               |       |         |         |           |             |
+    /// | CreateObjectsWithoutPooling | 50   |     239.14 ns |    13.583 ns |     39.836 ns |  1.03 |    0.27 |  0.1433 |    1200 B |        1.00 |
+    /// | CreateObjectsWithPooling    | 50   |   2,584.18 ns |    51.345 ns |    138.815 ns | 11.16 |    2.30 |       - |         - |        0.00 |
+    /// |                             |      |               |              |               |       |         |         |           |             |
+    /// | CreateObjectsWithoutPooling | 500  |   2,675.55 ns |   126.382 ns |    370.658 ns |  1.02 |    0.20 |  1.4343 |   12000 B |        1.00 |
+    /// | CreateObjectsWithPooling    | 500  |  26,207.48 ns |   702.915 ns |  2,072.560 ns |  9.98 |    1.60 |       - |         - |        0.00 |
+    /// |                             |      |               |              |               |       |         |         |           |             |
+    /// | CreateObjectsWithoutPooling | 1000 |   4,373.35 ns |   410.298 ns |  1,209.772 ns |  1.08 |    0.42 |  2.8687 |   24000 B |        1.00 |
+    /// | CreateObjectsWithPooling    | 1000 |  51,236.44 ns | 1,864.197 ns |  5,496.627 ns | 12.61 |    3.64 |       - |         - |        0.00 |
+    /// |                             |      |               |              |               |       |         |         |           |             |
+    /// | CreateObjectsWithoutPooling | 2000 |  10,360.17 ns |   498.870 ns |  1,447.313 ns |  1.02 |    0.21 |  5.7373 |   48000 B |        1.00 |
+    /// | CreateObjectsWithPooling    | 2000 |  95,822.95 ns | 5,261.886 ns | 15,514.792 ns |  9.45 |    2.12 |       - |         - |        0.00 |
+    /// |                             |      |               |              |               |       |         |         |           |             |
+    /// | CreateObjectsWithoutPooling | 5000 |  25,184.58 ns | 1,241.936 ns |  3,583.269 ns |  1.02 |    0.21 | 14.3433 |  120000 B |        1.00 |
+    /// | CreateObjectsWithPooling    | 5000 | 251,455.61 ns | 7,569.867 ns | 22,201.113 ns | 10.19 |    1.73 |       - |         - |        0.00 |
     /// 
     /// * Legends *
     /// N           : Value of the 'N' parameter
@@ -61,12 +71,27 @@ namespace TinyObjectPool.Benchmarks
     [MemoryDiagnoser]
     public class Benchmarks
     {
+        private ObjectPool<MyObject> _pool;
+
         /// <summary>
         /// Tells the benchmark that we want to use this property as a parameter for our
         /// benchmarks.
         /// </summary>
-        [Params(5, 50, 500)]
+        [Params(5, 50, 500, 1000, 2000, 5000)]
         public int N { get; set; }
+
+        /// <summary>
+        /// <see href="https://benchmarkdotnet.org/articles/features/setup-and-cleanup.html">[GlobalSetup]</see> attribute - executed only once per 
+        /// a benchmarked method after initialization of benchmark parameters and before all the benchmark method invocations.
+        /// </summary>
+        [GlobalSetup]
+        public void Setup()
+        {
+            // TODO: Proper dependency injection
+            _pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+        }
 
         /// <summary>
         /// The Baseline parameter adds just 1 or 2 columns in the report that give us basically
@@ -74,23 +99,59 @@ namespace TinyObjectPool.Benchmarks
         /// in the 'Ratio' column.
         /// Refer to https://benchmarkdotnet.org/articles/features/baselines.html
         /// </summary>
+        /// <remarks>
+        /// Based on the documentation, it's good practice to avoid dead code elimination by using the result
+        /// of the calculation, that's why <see cref="Task"/> is returned.
+        /// </remarks>
         [Benchmark(Baseline = true)]
-        public string StringJoin()
+        public Task CreateObjectsWithoutPooling()
         {
-            return string.Join(", ", Enumerable.Range(0, N).Select(i => i.ToString()));
-        }
-
-        [Benchmark]
-        public string StringBuilder()
-        {
-            var sb = new StringBuilder();
             for (var i = 0; i < N; i++)
             {
-                sb.Append(i);
-                sb.Append(", ");
+                var myObject = new MyObject
+                {
+                    Name = "Sample"
+                };
             }
 
-            return sb.ToString();
+            return Task.CompletedTask;
+        }
+
+        // TODO: Try later with multiple threads
+
+        [Benchmark]
+        public Task CreateObjectsWithPooling()
+        {
+            for (var i = 0; i < N; i++)
+            {
+                using RentedObject<MyObject> myRentedObject = _pool.Rent();
+                myRentedObject.Value.Name = "Sample";
+            }
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// <see href="https://benchmarkdotnet.org/articles/features/setup-and-cleanup.html">[GlobalCleanup]</see> attribute - executed only once per
+        /// a benchmarked method after all the benchmark method invocations.
+        /// </summary>
+        [GlobalCleanup]
+        public void GlobalCleanup()
+        {
+            // Disposing logic
+        }
+    }
+
+    public class MyObject : IResettable
+    {
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Prevent subtle data leaks or unexpected state bugs
+        /// </summary>
+        public void Reset()
+        {
+            Name = string.Empty;
         }
     }
 }
