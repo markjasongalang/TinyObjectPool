@@ -8,16 +8,6 @@ public class Program
             factory: () => new MyObject(),
             maxSize: 10);
 
-        // TODO: Benchmarks
-        // Basis: https://gist.github.com/admir-live/db304653649bd55f5f4eebba3d29d537
-
-        // In our scenario, we'll have the:
-        // private ObjectPool<T> _pool;
-
-        // So, basically, our benchmark methods would be:
-        // Benchmark1 - without object pool
-        // Benchmark2 - with our ObjectPool<T>
-
     }
 }
 

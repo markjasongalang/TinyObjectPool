@@ -4,7 +4,7 @@
 /// A thread-safe, bounded object pool backed by a stack and managed via a SemaphoreSlim.
 /// </summary>
 /// <remarks>
-/// Should only be for object lifetime managemen
+/// Should only be for object lifetime management
 /// </remarks>
 public class ObjectPool<T> : IDisposable where T : class
 {
