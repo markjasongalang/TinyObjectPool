@@ -81,6 +81,9 @@ public class ObjectPool<T> : IDisposable where T : class
         return new RentedObject<T>(this, item);
     }
 
+    // Note: Figure out why the this is only called once even though
+    // we called the Dispose() twice on RentedObject<T>
+
     internal void Return(T item)
     {
         // C#'s nullable reference types feature is purely a compile-time static analysis safety check,

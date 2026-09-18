@@ -194,5 +194,25 @@
             Assert.AreEqual(0, pool.Count);
             Assert.IsNotNull(obj);
         }
+
+        [TestMethod]
+        public void Dispose_AlreadyDisposedObject_Idempotent() 
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+
+            RentedObject<MyObject> obj = pool.Rent();
+
+            obj.Dispose();
+
+            // In the second Dispose() below, we expect no exceptions to be thrown.
+            // So, this unit test will fail if an exception is thrown and we don't need to
+            // add a special assert (though, in NUnit, there's a method called
+            // Assert.DoesNotThrow for this scenario)
+            obj.Dispose();
+
+            Assert.AreEqual(1, pool.Count);
+        }
     }
 }
