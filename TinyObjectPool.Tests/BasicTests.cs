@@ -179,5 +179,20 @@
                     maxSize: 0);
             });
         }
+
+        [TestMethod]
+        public void Rent_InstantiateNullableRentedObject_ReturnsNotNullObject()
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+
+            Assert.AreEqual(0, pool.Count);
+
+            using RentedObject<MyObject>? obj = pool.Rent();
+
+            Assert.AreEqual(0, pool.Count);
+            Assert.IsNotNull(obj);
+        }
     }
 }
