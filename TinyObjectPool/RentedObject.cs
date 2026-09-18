@@ -11,7 +11,30 @@ public struct RentedObject<T> : IDisposable where T : class
     private ObjectPool<T>? _pool;
     private bool _isDisposed;
 
-    public T Value { get; }
+    private T _value;
+    public T Value
+    {
+        // A getter in C# is the get accessor of a property, used to 
+        // retrieve value of a private field or computed expression.
+
+        get // Custom getter
+        {
+            if (_isDisposed)
+            {
+                ObjectDisposedException.ThrowIf(_isDisposed, this);
+            }
+
+            return _value;
+        }
+
+        // Private setter: only modifiable inside this class
+        private set
+        {
+            _value = value;
+        }
+
+        // Refer to https://medium.com/@ahmad.sohail/getters-in-c-the-essential-guide-for-modern-net-developers-68c601beade2
+    }
 
     /// <summary>
     /// Internal constructor for the rented object
@@ -26,7 +49,7 @@ public struct RentedObject<T> : IDisposable where T : class
         _pool = pool;
         _isDisposed = false;
 
-        Value = value;
+        _value = value;
     }
 
     /// <summary>

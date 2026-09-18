@@ -8,15 +8,7 @@ public class Program
             factory: () => new MyObject(),
             maxSize: 10);
 
-        RentedObject<MyObject> obj = pool.Rent();
 
-        obj.Dispose();
-
-        Console.WriteLine(obj.Value.Name); // FIXME: Object should not be accessed anymore
-
-        obj.Dispose();
-
-        Console.WriteLine(pool.Count); // 1
     }
 }
 

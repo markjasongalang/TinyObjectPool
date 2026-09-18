@@ -1,4 +1,6 @@
-﻿namespace TinyObjectPool.Tests
+﻿using System.Net.NetworkInformation;
+
+namespace TinyObjectPool.Tests
 {
     [TestClass]
     public sealed class BasicTests
@@ -213,6 +215,23 @@
             obj.Dispose();
 
             Assert.AreEqual(1, pool.Count);
+        }
+
+        [TestMethod]
+        public void Dispose_AccessDisposedObject_ThrowsException()
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+
+            RentedObject<MyObject> rentedObject = pool.Rent();
+
+            rentedObject.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() =>
+            {
+                MyObject obj = rentedObject.Value;
+            });
         }
     }
 }
