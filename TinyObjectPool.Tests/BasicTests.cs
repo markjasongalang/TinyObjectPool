@@ -233,5 +233,17 @@ namespace TinyObjectPool.Tests
                 MyObject obj = rentedObject.Value;
             });
         }
+
+        [TestMethod]
+        public void Rent_AsyncObjectRent_ReturnsNotNullObject()
+        {
+            using var pool = new ObjectPool<MyObject>(
+                factory: () => new MyObject(),
+                maxSize: 10);
+
+            using RentedObject<MyObject>? obj = pool.Rent();
+
+            Assert.IsNotNull(obj);
+        }
     }
 }
