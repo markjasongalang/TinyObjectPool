@@ -6,12 +6,12 @@ public class DisposeTests
     [TestMethod]
     public void Dispose_RentedObjectNotReturned_PoolDisposesObjects()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
         // Explicitly didn't include 'using' keyword below so the object will not be returned
-        RentedObject<MyObject> obj = pool.Rent();
+        RentedObject<MyClassWithReset> obj = pool.Rent();
 
         pool.Dispose();
 
@@ -22,26 +22,26 @@ public class DisposeTests
     [TestMethod]
     public void Dispose_RentObjectOnDisposedPool_ThrowsObjectDisposedException()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
         pool.Dispose();
 
         Assert.Throws<ObjectDisposedException>(() =>
         {
-            using RentedObject<MyObject> obj = pool.Rent();
+            using RentedObject<MyClassWithReset> obj = pool.Rent();
         });
     }
 
     [TestMethod]
     public void Dispose_AlreadyDisposedObject_Idempotent()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
-        RentedObject<MyObject> obj = pool.Rent();
+        RentedObject<MyClassWithReset> obj = pool.Rent();
 
         obj.Dispose();
 
@@ -57,17 +57,17 @@ public class DisposeTests
     [TestMethod]
     public void Dispose_AccessDisposedObject_ThrowsException()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
-        RentedObject<MyObject> rentedObject = pool.Rent();
+        RentedObject<MyClassWithReset> rentedObject = pool.Rent();
 
         rentedObject.Dispose();
 
         Assert.Throws<ObjectDisposedException>(() =>
         {
-            MyObject obj = rentedObject.Value;
+            MyClassWithReset obj = rentedObject.Value;
         });
     }
 }

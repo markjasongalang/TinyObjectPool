@@ -6,14 +6,14 @@ public sealed class RentTests
     [TestMethod]
     public async Task Rent_MultipleTasksRentSimultaneously_BlockWhileWaiting()
     {
-        var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 1); // Set to 1 for testing below
 
         Task task1 = Task.Run(async () =>
         {
             // Add explicit scope so the object would be returned before the assertion below
-            using (RentedObject<MyObject> obj1 = pool.Rent())
+            using (RentedObject<MyClassWithReset> obj1 = pool.Rent())
             {
                 Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Rented object");
 
@@ -35,7 +35,7 @@ public sealed class RentTests
 
             // This should block/wait until task 1 above returns the object that it rented so this 
             // task could rent it after
-            using RentedObject<MyObject> obj2 = pool.Rent();
+            using RentedObject<MyClassWithReset> obj2 = pool.Rent();
 
             Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Successfully Rented object!");
         });
@@ -46,14 +46,14 @@ public sealed class RentTests
     [TestMethod]
     public async Task Rent_NotReturnRentedObject_ThrowTimeoutException()
     {
-        var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 1);
 
         // Object 1
         Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 trying to rent");
 
-        RentedObject<MyObject> obj1 = pool.Rent(); // Intentionally doesn't include 'using'
+        RentedObject<MyClassWithReset> obj1 = pool.Rent(); // Intentionally doesn't include 'using'
 
         Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 successfully rented");
 
@@ -69,7 +69,7 @@ public sealed class RentTests
         Assert.Throws<TimeoutException>(() =>
         {
             // An exception should be thrown here because the object above wasn't returned
-            using RentedObject<MyObject> obj2 = pool.Rent();
+            using RentedObject<MyClassWithReset> obj2 = pool.Rent();
         });
 
         Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 successfully rented");
@@ -78,30 +78,30 @@ public sealed class RentTests
     [TestMethod]
     public async Task Rent_RentOnDisposedPool_ThrowObjectDisposedException()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
         pool.Dispose();
 
         Assert.Throws<ObjectDisposedException>(() =>
         {
-            using RentedObject<MyObject> obj = pool.Rent();
+            using RentedObject<MyClassWithReset> obj = pool.Rent();
         });
     }
 
     [TestMethod]
     public void Rent_InstantiateObjectWithUsingStatement_AutomaticallyReturnsToPool()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 1);
 
         // Use known, hard-coded, pre-calculated values instead
         // Refer to https://dev.to/canro91/4-common-mistakes-when-writing-your-first-unit-tests-44e9
         Assert.AreEqual(0, pool.Count);
 
-        using (RentedObject<MyObject> myObj = pool.Rent())
+        using (RentedObject<MyClassWithReset> myObj = pool.Rent())
         {
             // Some actual operations here
         }
@@ -112,13 +112,13 @@ public sealed class RentTests
     [TestMethod]
     public void Rent_InstantiateNullableRentedObject_ReturnsNotNullObject()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
         Assert.AreEqual(0, pool.Count);
 
-        using RentedObject<MyObject>? obj = pool.Rent();
+        using RentedObject<MyClassWithReset>? obj = pool.Rent();
 
         Assert.AreEqual(0, pool.Count);
         Assert.IsNotNull(obj);
@@ -127,11 +127,11 @@ public sealed class RentTests
     [TestMethod]
     public void Rent_AsyncObjectRent_ReturnsNotNullObject()
     {
-        using var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
-        using RentedObject<MyObject>? obj = pool.Rent();
+        using RentedObject<MyClassWithReset>? obj = pool.Rent();
 
         Assert.IsNotNull(obj);
     }

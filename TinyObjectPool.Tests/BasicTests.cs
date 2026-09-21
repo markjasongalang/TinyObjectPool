@@ -16,17 +16,17 @@ public sealed class BasicTests
     public void Reset_ObjectReturnedInPoolOfOne_ReturnsCleanObject()
     {
         // Arrange
-        var pool = new ObjectPool<MyObject>(
-            factory: () => new MyObject(),
+        var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 1);
 
         // Act
-        using (RentedObject<MyObject> obj1 = pool.Rent())
+        using (RentedObject<MyClassWithReset> obj1 = pool.Rent())
         {
             obj1.Value.Name = "Jason";
         }
 
-        RentedObject<MyObject> obj2 = pool.Rent();
+        RentedObject<MyClassWithReset> obj2 = pool.Rent();
 
         // Assert
         Assert.IsTrue(string.IsNullOrEmpty(obj2.Value.Name) && obj2.Value.Name != null);
@@ -37,8 +37,8 @@ public sealed class BasicTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
         {
-            using var pool = new ObjectPool<MyObject>(
-                factory: () => new MyObject(),
+            using var pool = new ObjectPool<MyClassWithReset>(
+                factory: () => new MyClassWithReset(),
                 maxSize: 0);
         });
     }

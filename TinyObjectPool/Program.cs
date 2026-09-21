@@ -9,14 +9,11 @@ public class Program
             //reset: delegate { Console.WriteLine("Reset mechanism here..."); },
             maxSize: 10);
 
-        // TODO: Add 3 unit tests:
-        // - Throw exception
-        // - Success by including action delegate in pool instantiation
-        // - Success by implementing IResettable
+
     }
 }
 
-public class MyObject : IResettable
+public class MyClassWithReset : IResettable
 {
     public string Name { get; set; }
 
