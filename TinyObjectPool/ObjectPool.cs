@@ -29,7 +29,19 @@ public class ObjectPool<T> : IDisposable where T : class
         }
     }
 
-    // Accept a factory delegate
+    /// <summary>
+    /// Upon instance creation, there is a strict validation for defining the reset mechanism of type T.
+    /// </summary>
+    /// <remarks>
+    /// <list>
+    /// <item>
+    /// <see href="https://learn.microsoft.com/en-us/dotnet/api/system.func-2?view=net-10.0">Func</see> - delegate that returns a value <br/>
+    /// </item>
+    /// <item>
+    /// <see href="https://learn.microsoft.com/en-us/dotnet/api/system.action-1?view=net-10.0">Action</see> - delegate that does not return a value
+    /// </item>
+    /// </list>
+    /// </remarks>
     public ObjectPool(
         Func<T> factory, 
         int maxSize, 
@@ -39,6 +51,12 @@ public class ObjectPool<T> : IDisposable where T : class
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _maxSize = maxSize;
         _reset = reset;
+
+        // The pool must either implement IResettable or define a reset method
+        if (reset == null && !typeof(IResettable).IsAssignableFrom(typeof(T)))
+        {
+            throw new InvalidOperationException($"Reset mechanism not defined for type '{typeof(T)}'");
+        }
 
         // Use 5 seconds as reasonable timeout default if none is provided 
         _defaultTimeout = defaultTimeout ?? TimeSpan.FromSeconds(5);
