@@ -64,4 +64,14 @@ public sealed class BasicTests
 
         // We expect no exceptions to be thrown here
     }
+
+    [TestMethod]
+    public void ObjectPool_CreatePoolWithoutResetDelegateAndClassWithReset_DoesNotThrowException()
+    {
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
+            maxSize: 10);
+
+        // We expect no exceptions to be thrown here
+    }
 }
