@@ -99,9 +99,22 @@ public class ObjectPool<T> : IDisposable where T : class
         return new RentedObject<T>(this, item);
     }
 
-    // Note: Figure out why the this is only called once even though
-    // we called the Dispose() twice on RentedObject<T>
-
+    /// <summary>
+    /// <para>Returns an object to the pool or disposes it if pool is already disposed.</para>
+    /// <para>
+    /// This automatically calls the reset mechanism of the object implementing <see cref="IResettable"/> 
+    /// (otherwise, the reset action delegate provided upon pool creation).
+    /// </para>
+    /// <para>Releases the <see cref="SemaphoreSlim"/> object so other waiting tasks can rent the returned object.</para>
+    /// </summary>
+    /// <param name="item">The object to be returned to the pool or disposed.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when item passed as argument is null.
+    /// </exception>
+    /// <remarks>
+    /// Due to the <c>Dispose()</c> method from <see cref="RentedObject{T}"/>, this
+    /// will only be called at most once per object.
+    /// </remarks>
     internal void Return(T item)
     {
         // C#'s nullable reference types feature is purely a compile-time static analysis safety check,

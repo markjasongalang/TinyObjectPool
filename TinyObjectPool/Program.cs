@@ -4,12 +4,14 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        using var pool = new ObjectPool<MyClassNoReset>(
-            factory: () => new MyClassNoReset(),
-            //reset: delegate { Console.WriteLine("Reset mechanism here..."); },
+        using var pool = new ObjectPool<MyClassWithReset>(
+            factory: () => new MyClassWithReset(),
             maxSize: 10);
 
+        RentedObject<MyClassWithReset> obj = pool.Rent();
 
+        obj.Dispose();
+        obj.Dispose();
     }
 }
 
