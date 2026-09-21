@@ -44,9 +44,13 @@ public sealed class BasicTests
     }
 
     [TestMethod]
-    public void ObjectPool_()
+    public void ObjectPool_CreatePoolWithoutResetDelegateAndClassWithoutReset_ThrowsException()
     {
-        // TODO: Require reset() Action<T> delegate implementation if T is not IResettable
-
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            using var pool = new ObjectPool<MyClassNoReset>(
+                factory: () => new MyClassNoReset(),
+                maxSize: 10);
+        });
     }
 }
