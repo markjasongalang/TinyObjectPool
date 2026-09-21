@@ -53,4 +53,15 @@ public sealed class BasicTests
                 maxSize: 10);
         });
     }
+
+    [TestMethod]
+    public void ObjectPool_CreatePoolWithResetDelegateAndClassWithoutReset_DoesNotThrowException()
+    {
+        using var pool = new ObjectPool<MyClassNoReset>(
+            factory: () => new MyClassNoReset(),
+            reset: pool => Console.WriteLine("Reset mechanism here..."),
+            maxSize: 10);
+
+        // We expect no exceptions to be thrown here
+    }
 }
