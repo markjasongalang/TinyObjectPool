@@ -1,4 +1,6 @@
-﻿namespace TinyObjectPool.Tests;
+﻿using TinyObjectPool.Tests.Models;
+
+namespace TinyObjectPool.Tests;
 
 [TestClass]
 public sealed class BasicTests
@@ -16,17 +18,17 @@ public sealed class BasicTests
     public void Reset_ObjectReturnedInPoolOfOne_ReturnsCleanObject()
     {
         // Arrange
-        var pool = new ObjectPool<MyClassWithReset>(
-            factory: () => new MyClassWithReset(),
+        var pool = new ObjectPool<SampleClassWithReset>(
+            factory: () => new SampleClassWithReset(),
             maxSize: 1);
 
         // Act
-        using (RentedObject<MyClassWithReset> obj1 = pool.Rent())
+        using (RentedObject<SampleClassWithReset> obj1 = pool.Rent())
         {
             obj1.Value.Name = "Jason";
         }
 
-        RentedObject<MyClassWithReset> obj2 = pool.Rent();
+        RentedObject<SampleClassWithReset> obj2 = pool.Rent();
 
         // Assert
         Assert.IsTrue(string.IsNullOrEmpty(obj2.Value.Name) && obj2.Value.Name != null);
@@ -37,8 +39,8 @@ public sealed class BasicTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
         {
-            using var pool = new ObjectPool<MyClassWithReset>(
-                factory: () => new MyClassWithReset(),
+            using var pool = new ObjectPool<SampleClassWithReset>(
+                factory: () => new SampleClassWithReset(),
                 maxSize: 0);
         });
     }
@@ -48,8 +50,8 @@ public sealed class BasicTests
     {
         Assert.Throws<InvalidOperationException>(() =>
         {
-            using var pool = new ObjectPool<MyClassNoReset>(
-                factory: () => new MyClassNoReset(),
+            using var pool = new ObjectPool<SampleClassNoReset>(
+                factory: () => new SampleClassNoReset(),
                 maxSize: 10);
         });
     }
@@ -57,8 +59,8 @@ public sealed class BasicTests
     [TestMethod]
     public void ObjectPool_CreatePoolWithResetDelegateAndClassWithoutReset_DoesNotThrowException()
     {
-        using var pool = new ObjectPool<MyClassNoReset>(
-            factory: () => new MyClassNoReset(),
+        using var pool = new ObjectPool<SampleClassNoReset>(
+            factory: () => new SampleClassNoReset(),
             reset: pool => Console.WriteLine("Reset mechanism here..."),
             maxSize: 10);
 
@@ -68,8 +70,8 @@ public sealed class BasicTests
     [TestMethod]
     public void ObjectPool_CreatePoolWithoutResetDelegateAndClassWithReset_DoesNotThrowException()
     {
-        using var pool = new ObjectPool<MyClassWithReset>(
-            factory: () => new MyClassWithReset(),
+        using var pool = new ObjectPool<SampleClassWithReset>(
+            factory: () => new SampleClassWithReset(),
             maxSize: 10);
 
         // We expect no exceptions to be thrown here
