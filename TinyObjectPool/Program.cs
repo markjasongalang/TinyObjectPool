@@ -8,10 +8,7 @@ public class Program
             factory: () => new MyClassWithReset(),
             maxSize: 10);
 
-        RentedObject<MyClassWithReset> obj = pool.Rent();
 
-        obj.Dispose();
-        obj.Dispose();
     }
 }
 

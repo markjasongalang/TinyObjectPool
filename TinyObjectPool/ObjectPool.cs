@@ -1,10 +1,21 @@
 ﻿namespace TinyObjectPool;
 
 /// <summary>
-/// A thread-safe, bounded object pool backed by a stack and managed via a SemaphoreSlim.
+/// A thread-safe and bounded object pool that mainly utilizes <see cref="Stack{T}"/> and <see cref="SemaphoreSlim"/>.
 /// </summary>
 /// <remarks>
-/// Should only be for object lifetime management
+/// <para>This should be for object lifetime management only.</para>
+/// <para>
+/// <see href="https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/where-generic-type-constraint">where</see>
+/// is a generic type constraint. A <see href="https://essentialcsharp.com/constraints#constraints">constraint</see> declares the characteristics 
+/// that the generic type requires of the type argument supplied for each type parameter.
+/// </para>
+/// <para>
+/// The constraint is set to <see href="https://essentialcsharp.com/structclass-constraints#structclass-constraints">class</see>
+/// and not <see href="https://essentialcsharp.com/notnull-constraint#notnull-constraint">notnull</see> because value types
+/// (allocation-free) don't need pooling, thus, it's better to focus on supporting reference types instead (i.e., class,
+/// interface, delegate, or array types).
+/// </para>
 /// </remarks>
 public class ObjectPool<T> : IDisposable where T : class
 {
