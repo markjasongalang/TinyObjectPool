@@ -117,8 +117,6 @@ namespace TinyObjectPool.Benchmarks
             return Task.CompletedTask;
         }
 
-        // TODO: Try later with multiple threads
-
         [Benchmark]
         public Task CreateObjectsWithPooling()
         {

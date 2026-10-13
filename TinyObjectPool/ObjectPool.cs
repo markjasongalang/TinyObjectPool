@@ -1,4 +1,6 @@
-﻿namespace TinyObjectPool;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace TinyObjectPool;
 
 /// <summary>
 /// A thread-safe and bounded object pool that mainly utilizes <see cref="Stack{T}"/> and <see cref="SemaphoreSlim"/>.
@@ -26,6 +28,13 @@ public class ObjectPool<T> : IDisposable where T : class
     private readonly TimeSpan _defaultTimeout;
     private readonly object _lock = new(); // Always private and dedicated
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
+
+    /// <summary>
+    /// Eviction manager for idle timeout
+    /// </summary>
+    private EvictionManager<T> _evictionManager;
+
+    private Timer? _evictionCheckTimer;
 
     private bool _isDisposed;
 
@@ -74,6 +83,91 @@ public class ObjectPool<T> : IDisposable where T : class
 
         // Allows up to _maxSize concurrent rents before blocking
         _semaphore = new SemaphoreSlim(maxSize, maxSize);
+
+        InitEviction();
+    }
+
+    /// <summary>
+    /// Initializes the eviction manager instance to be used on tracking object eviction.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// To remove the warning on <see cref="ObjectPool{T}"/> since we initialized a non-nullable field outside
+    /// the constructor, we used the <see cref="MemberNotNullAttribute"/> to indicate that <see cref="_evictionManager"/>
+    /// will surely be initialized in this method.
+    /// </para>
+    /// <para>
+    /// References:
+    /// <list type="bullet">
+    /// <item>
+    /// <see href="https://stackoverflow.com/questions/69751455/non-nullable-fields-initialized-inside-a-method-called-from-the-constructor"/>
+    /// </item>
+    /// <item>
+    /// <see href="https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.codeanalysis.membernotnullattribute?view=net-5.0"/>
+    /// </item>
+    /// <item>
+    /// <see href="https://github.com/dotnet/csharplang/discussions/4563"/>
+    /// </item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    [MemberNotNull(nameof(_evictionManager))]
+    private void InitEviction()
+    {
+        _evictionManager = new EvictionManager<T>(idleTimeout: TimeSpan.FromMinutes(5));
+
+        // Set up periodic checks
+        _evictionCheckTimer = new Timer(
+            PerformEvictionCheck,
+            null,
+            dueTime: TimeSpan.FromMinutes(1), // Delay before the first call of the callback
+            period: TimeSpan.FromMinutes(1)); // Runs every minute
+    }
+
+    /// <summary>
+    /// Rearranges the object pool (stack) until it finds and remove the object to be evicted.
+    /// </summary>
+    /// <param name="state">
+    /// An object containing application-specific information relevant to the method invoked by this method delegate, or null.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// This method is called by the timer delegate and it does not execute in the thread that created
+    /// the timer, but instead executes in a separate thread pool provided by the system.
+    /// </para>
+    /// <para>
+    /// Refer to <see href="https://learn.microsoft.com/en-us/dotnet/api/system.threading.timercallback?view=net-10.0" />.
+    /// </para>
+    /// <para>
+    /// Since we're passing this to the <see cref="Timer(TimerCallback)"/> instantiation, we must include 
+    /// the optional <paramref name="state" /> parameter.
+    /// </para>
+    /// </remarks>
+    private void PerformEvictionCheck(object? state)
+    {
+        T[] objectsToCheck = _objectPool.ToArray();
+
+        _evictionManager?.RunEviction(objectsToCheck, removeAction: (obj) =>
+        {
+            // We're popping off each object from the stack until we encounter the object
+            // that we want to remove.
+            if (_objectPool.TryPop(out T? removed) && EqualityComparer<T>.Default.Equals(removed, obj))
+            {
+                Console.WriteLine($"[{DateTime.Now}] An idle object was removed from the pool. Pool count now = {Count}");
+
+                //MyClassWithReset convertedObj = (MyClassWithReset)Convert.ChangeType(obj, typeof(MyClassWithReset));
+                //Console.WriteLine($"[{DateTime.Now}] {convertedObj.Name} was removed. Pool count now: {Count}");
+            }
+            else if (removed != null)
+            {
+                // Return the object that we don't want to remove
+                _objectPool.Push(removed);
+
+                //Console.WriteLine("Tried to remove the object but it wasn't the target object");
+            }
+        });
+
+        //Console.WriteLine($"Pool count = {Count}");
     }
 
     /// <summary>
@@ -102,9 +196,17 @@ public class ObjectPool<T> : IDisposable where T : class
             // Double check disposal inside lock frame
             ObjectDisposedException.ThrowIf(_isDisposed, this);
 
-            // Reuse an idle object if available
-            // Otherwise, create a new object (guaranteed <= _maxSize by semaphore);
-            item = _objectPool.Count > 0 ? _objectPool.Pop() : _factory(); // Delegate creation to the factory
+            if (_objectPool.Count > 0) // Reuse an idle object if available
+            {
+                item = _objectPool.Pop();
+                _evictionManager.RecordAccess(item);
+            }
+            else // Otherwise, create a new object (guaranteed <= _maxSize by semaphore);
+            {
+                item = _factory(); // Delegate creation to the factory
+                _evictionManager.TrackObject(item);
+                _evictionManager.RecordAccess(item);
+            }
         }
 
         return new RentedObject<T>(this, item);
@@ -149,7 +251,7 @@ public class ObjectPool<T> : IDisposable where T : class
             if (item is IResettable resettable)
             {
                 // Ensures callers don't even have to pass a reset delegate
-                resettable.Reset();
+                resettable.Reset(); // Note: You may disable or comment this temporarily if you need to investigate.
             }
 
             // Otherwise, invoke custom reset action delegate if provided
@@ -157,6 +259,8 @@ public class ObjectPool<T> : IDisposable where T : class
 
             // Push returned object back to pool for reuse
             _objectPool.Push(item);
+
+            _evictionManager.RecordReturn(item);
         }
 
         // Release the semaphore so a waiting Rent() thread can wake up
@@ -183,6 +287,9 @@ public class ObjectPool<T> : IDisposable where T : class
                     disposable.Dispose();
                 }
             }
+
+            _evictionCheckTimer = null;
+            _evictionManager.Dispose();
 
             // Dispose synchronization primitive
             _semaphore.Dispose();
