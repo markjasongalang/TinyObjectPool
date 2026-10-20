@@ -25,13 +25,13 @@ public sealed class BasicTests
         // Act
         using (RentedObject<SampleClassWithReset> obj1 = pool.Rent())
         {
-            obj1.Value.Name = "Jason";
+            obj1.Unwrap().Name = "Jason";
         }
 
         RentedObject<SampleClassWithReset> obj2 = pool.Rent();
 
         // Assert
-        Assert.IsTrue(string.IsNullOrEmpty(obj2.Value.Name) && obj2.Value.Name != null);
+        Assert.IsTrue(string.IsNullOrEmpty(obj2.Unwrap().Name) && obj2.Unwrap().Name != null);
     }
 
     [TestMethod]

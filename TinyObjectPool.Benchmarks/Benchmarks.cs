@@ -123,7 +123,7 @@ namespace TinyObjectPool.Benchmarks
             for (var i = 0; i < N; i++)
             {
                 using RentedObject<MyObject> myRentedObject = _pool.Rent();
-                myRentedObject.Value.Name = "Sample";
+                myRentedObject.Unwrap().Name = "Sample";
             }
 
             return Task.CompletedTask;

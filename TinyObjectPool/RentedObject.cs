@@ -30,29 +30,6 @@ public struct RentedObject<T> : IDisposable, IAsyncDisposable where T : class
     private bool _isDisposed;
 
     private T _value;
-    public T Value
-    {
-        // A getter in C# is the get accessor of a property, used to 
-        // retrieve value of a private field or computed expression.
-
-        get // Custom getter
-        {
-            if (_isDisposed)
-            {
-                ObjectDisposedException.ThrowIf(_isDisposed, this);
-            }
-
-            return _value;
-        }
-
-        // Private setter: only modifiable inside this class
-        private set
-        {
-            _value = value;
-        }
-
-        // Refer to https://medium.com/@ahmad.sohail/getters-in-c-the-essential-guide-for-modern-net-developers-68c601beade2
-    }
 
     /// <summary>
     /// Internal constructor for the rented object
@@ -68,6 +45,22 @@ public struct RentedObject<T> : IDisposable, IAsyncDisposable where T : class
         _isDisposed = false;
 
         _value = value;
+    }
+
+    /// <summary>
+    /// Gets the value of the rented object.
+    /// </summary>
+    /// <returns>The actual value of the rented object of type <see cref="T"/></returns>
+    /// <exception cref="ObjectDisposedException">Thrown when trying to access a disposed object.</exception>
+    /// <remarks>
+    /// We explicitly defined this method instead of an actual getter because if we placed <see cref="ObjectDisposedException"/>
+    /// on it, multiple calls to <see cref="Dispose"/> or <see cref="DisposeAsync"/> would throw exceptions instead of it being
+    /// idempotent.
+    /// </remarks>
+    public T Unwrap()
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
+        return _value;
     }
 
     #region IDisposable and IAsyncDisposable Implementation
@@ -116,7 +109,7 @@ public struct RentedObject<T> : IDisposable, IAsyncDisposable where T : class
     /// </remarks>
     public void Dispose()
     {
-        T valueCopy = Value;
+        T valueCopy = _value;
 
         // The Return() method is foreign code to this class, so run it after the lock is released.
         // Deadlock risk as well since there's also a lock inside the Return() method.
@@ -137,7 +130,7 @@ public struct RentedObject<T> : IDisposable, IAsyncDisposable where T : class
     /// <inheritdoc cref="Dispose"/>
     public ValueTask DisposeAsync()
     {
-        T valueCopy = Value;
+        T valueCopy = _value;
 
         TryTakePool()?.Return(valueCopy);
         return ValueTask.CompletedTask;

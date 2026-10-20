@@ -14,43 +14,52 @@ public class Program
             factory: () => new MyClassWithReset(),
             maxSize: 10);
 
-        var rentTasks = new Task[]
-        {
-            Task.Run(async() =>
-            {
-                await using (RentedObject<MyClassWithReset> obj = pool.Rent())
-                {
-                    Console.WriteLine($"[{DateTime.Now}] Rented an object");
-                    await Task.Delay(TimeSpan.FromSeconds(2));
-                    Console.WriteLine("here1");
+        RentedObject<MyClassWithReset> obj = pool.Rent();
 
-                    obj.Value.Name = "Object 1";
-                } // Dispose here
+        obj.Dispose();
+        obj.Dispose();
+        obj.Dispose();
+        obj.Dispose();
 
-                Console.WriteLine($"[{DateTime.Now}] Returned the object");
-                Console.WriteLine($"[{DateTime.Now}] Pool object count: {pool.Count}");
-            }),
-            Task.Run(async() =>
-            {
-                await using (RentedObject<MyClassWithReset> obj = pool.Rent())
-                {
-                    Console.WriteLine($"[{DateTime.Now}] Rented an object");
-                    await Task.Delay(TimeSpan.FromSeconds(12));
-                    Console.WriteLine("here2");
+        Console.WriteLine(pool.Count);
 
-                    obj.Value.Name = "Object 2";
-                } // Dispose here
+        //var rentTasks = new Task[]
+        //{
+        //    Task.Run(async() =>
+        //    {
+        //        await using (RentedObject<MyClassWithReset> obj = pool.Rent())
+        //        {
+        //            Console.WriteLine($"[{DateTime.Now}] Rented an object");
+        //            await Task.Delay(TimeSpan.FromSeconds(2));
+        //            Console.WriteLine("here1");
 
-                Console.WriteLine($"[{DateTime.Now}] Returned the object");
-                Console.WriteLine($"[{DateTime.Now}] Pool object count: {pool.Count}");
-            })
-        };
+        //            obj.Value.Name = "Object 1";
+        //        } // Dispose here
 
-        await Task.WhenAll(rentTasks);
+        //        Console.WriteLine($"[{DateTime.Now}] Returned the object");
+        //        Console.WriteLine($"[{DateTime.Now}] Pool object count: {pool.Count}");
+        //    }),
+        //    Task.Run(async() =>
+        //    {
+        //        await using (RentedObject<MyClassWithReset> obj = pool.Rent())
+        //        {
+        //            Console.WriteLine($"[{DateTime.Now}] Rented an object");
+        //            await Task.Delay(TimeSpan.FromSeconds(12));
+        //            Console.WriteLine("here2");
 
-        // Intentional delay so we can observe the background eviction
-        await Task.Delay(TimeSpan.FromMinutes(15));
-        Console.WriteLine("Program exiting...");
+        //            obj.Value.Name = "Object 2";
+        //        } // Dispose here
+
+        //        Console.WriteLine($"[{DateTime.Now}] Returned the object");
+        //        Console.WriteLine($"[{DateTime.Now}] Pool object count: {pool.Count}");
+        //    })
+        //};
+
+        //await Task.WhenAll(rentTasks);
+
+        //// Intentional delay so we can observe the background eviction
+        //await Task.Delay(TimeSpan.FromMinutes(15));
+        //Console.WriteLine("Program exiting...");
     }
 }
 

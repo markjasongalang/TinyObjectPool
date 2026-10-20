@@ -18,7 +18,7 @@ public class DisposeTests
         pool.Dispose();
 
         Assert.AreEqual(0, pool.Count);
-        Assert.IsTrue(string.IsNullOrEmpty(obj.Value.Name));
+        Assert.IsTrue(string.IsNullOrEmpty(obj.Unwrap().Name));
     }
 
     [TestMethod]
@@ -48,7 +48,7 @@ public class DisposeTests
         obj.Dispose();
 
         // In the second Dispose() below, we expect no exceptions to be thrown.
-        // So, this unit test will fail if an exception is thrown and we don't need to
+        // So, this unit test will fail if an exception is thrown, and we don't need to
         // add a special assert (though, in NUnit, there's a method called
         // Assert.DoesNotThrow for this scenario)
         obj.Dispose();
@@ -69,7 +69,7 @@ public class DisposeTests
 
         Assert.Throws<ObjectDisposedException>(() =>
         {
-            SampleClassWithReset obj = rentedObject.Value;
+            SampleClassWithReset obj = rentedObject.Unwrap();
         });
     }
 }

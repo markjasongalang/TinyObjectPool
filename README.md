@@ -20,7 +20,7 @@ As of September 18, 2026, after reading [@snoekiede](https://github.com/snoekied
 
 ## Object Eviction Sample (Idle-Based)
 
-```powershell
+```
 [10/13/2026 4:43:10 PM] Rented an object
 [10/13/2026 4:43:10 PM] Rented an object
 here1
