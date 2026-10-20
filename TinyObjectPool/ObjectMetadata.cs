@@ -29,6 +29,15 @@ public class ObjectMetadata
 
     public TimeSpan Age => DateTime.UtcNow - CreatedAt;
 
+    /// <summary>
+    /// Gets the idle time of the rented object that was returned to the pool.
+    /// </summary>
+    /// <returns>The idle time of the object.</returns>
+    /// <remarks>
+    /// If <see cref="LastReturnedAt"/> is greater than or equal to <see cref="LastAccessedAt"/>, then
+    /// it means the object was rented and then returned to the pool afterwards, so this is what we
+    /// want to refer as the idle time.
+    /// </remarks>
     public TimeSpan? GetIdleTime()
     {
         if (LastReturnedAt.HasValue && LastAccessedAt.HasValue && 
