@@ -30,9 +30,9 @@ public class ObjectPool<T> : IDisposable where T : class
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
 
     /// <summary>
-    /// Eviction manager for idle timeout
+    /// Eviction manager for idle timeout (optional)
     /// </summary>
-    private EvictionManager<T> _evictionManager;
+    private EvictionManager<T>? _evictionManager;
 
     private Timer? _evictionCheckTimer;
 
@@ -40,13 +40,7 @@ public class ObjectPool<T> : IDisposable where T : class
 
     public int Count
     {
-        get
-        {
-            lock (_lock)
-            {
-                return _objectPool.Count;
-            }
-        }
+        get { lock (_lock) { return _objectPool.Count; } }
     }
 
     /// <summary>
@@ -63,8 +57,9 @@ public class ObjectPool<T> : IDisposable where T : class
     /// </list>
     /// </remarks>
     public ObjectPool(
-        Func<T> factory, 
-        int maxSize, 
+        Func<T> factory,
+        int maxSize,
+        bool enableEviction = false,
         Action<T>? reset = null,
         TimeSpan? defaultTimeout = null)
     {
@@ -84,34 +79,16 @@ public class ObjectPool<T> : IDisposable where T : class
         // Allows up to _maxSize concurrent rents before blocking
         _semaphore = new SemaphoreSlim(maxSize, maxSize);
 
-        InitEviction();
+        if (enableEviction)
+        {
+            InitEviction();
+        }
     }
 
     /// <summary>
     /// Initializes the eviction manager instance to be used on tracking object eviction.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// To remove the warning on <see cref="ObjectPool{T}"/> since we initialized a non-nullable field outside
-    /// the constructor, we used the <see cref="MemberNotNullAttribute"/> to indicate that <see cref="_evictionManager"/>
-    /// will surely be initialized in this method.
-    /// </para>
-    /// <para>
-    /// References:
-    /// <list type="bullet">
-    /// <item>
-    /// <see href="https://stackoverflow.com/questions/69751455/non-nullable-fields-initialized-inside-a-method-called-from-the-constructor"/>
-    /// </item>
-    /// <item>
-    /// <see href="https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.codeanalysis.membernotnullattribute?view=net-5.0"/>
-    /// </item>
-    /// <item>
-    /// <see href="https://github.com/dotnet/csharplang/discussions/4563"/>
-    /// </item>
-    /// </list>
-    /// </para>
-    /// </remarks>
-    [MemberNotNull(nameof(_evictionManager))]
+    //[MemberNotNull(nameof(_evictionManager))] // This is for removing the warning if we initialized a non-nullable field outside the constructor
     private void InitEviction()
     {
         _evictionManager = new EvictionManager<T>(idleTimeout: TimeSpan.FromMinutes(5));
@@ -199,13 +176,13 @@ public class ObjectPool<T> : IDisposable where T : class
             if (_objectPool.Count > 0) // Reuse an idle object if available
             {
                 item = _objectPool.Pop();
-                _evictionManager.RecordAccess(item);
+                _evictionManager?.RecordAccess(item);
             }
             else // Otherwise, create a new object (guaranteed <= _maxSize by semaphore);
             {
                 item = _factory(); // Delegate creation to the factory
-                _evictionManager.TrackObject(item);
-                _evictionManager.RecordAccess(item);
+                _evictionManager?.TrackObject(item);
+                _evictionManager?.RecordAccess(item);
             }
         }
 
@@ -260,7 +237,7 @@ public class ObjectPool<T> : IDisposable where T : class
             // Push returned object back to pool for reuse
             _objectPool.Push(item);
 
-            _evictionManager.RecordReturn(item);
+            _evictionManager?.RecordReturn(item);
         }
 
         // Release the semaphore so a waiting Rent() thread can wake up
@@ -289,7 +266,7 @@ public class ObjectPool<T> : IDisposable where T : class
             }
 
             _evictionCheckTimer = null;
-            _evictionManager.Dispose();
+            _evictionManager?.Dispose();
 
             // Dispose synchronization primitive
             _semaphore.Dispose();
