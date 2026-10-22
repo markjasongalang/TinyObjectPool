@@ -2,7 +2,7 @@
 
 internal class SampleClassWithReset : IResettable
 {
-    public string Name { get; set; }
+    public string? Name { get; set; }
 
     /// <summary>
     /// Prevent subtle data leaks or unexpected state bugs
