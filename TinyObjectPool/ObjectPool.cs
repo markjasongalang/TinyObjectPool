@@ -27,12 +27,14 @@ public class ObjectPool<T> : IDisposable where T : class
     private readonly object _lock = new(); // Always private and dedicated
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
 
+    private readonly TimeProvider? _timeProvider;
+    
     /// <summary>
     /// Eviction manager for idle timeout (optional)
     /// </summary>
     private EvictionManager<T>? _evictionManager;
 
-    private Timer? _evictionCheckTimer;
+    private ITimer? _evictionCheckTimer;
 
     private bool _isDisposed;
 
@@ -58,6 +60,7 @@ public class ObjectPool<T> : IDisposable where T : class
         Func<T> factory,
         int maxSize,
         bool enableEviction = false,
+        TimeProvider? timeProvider = null,
         Action<T>? reset = null,
         TimeSpan? defaultTimeout = null)
     {
@@ -79,6 +82,7 @@ public class ObjectPool<T> : IDisposable where T : class
 
         if (enableEviction)
         {
+            _timeProvider = timeProvider ?? TimeProvider.System;
             InitEviction();
         }
     }
@@ -92,9 +96,9 @@ public class ObjectPool<T> : IDisposable where T : class
         _evictionManager = new EvictionManager<T>(idleTimeout: TimeSpan.FromMinutes(5));
 
         // Set up periodic checks
-        _evictionCheckTimer = new Timer(
+        _evictionCheckTimer = _timeProvider!.CreateTimer(
             PerformEvictionCheck,
-            null,
+            state: this,
             dueTime: TimeSpan.FromMinutes(1), // Delay before the first call of the callback
             period: TimeSpan.FromMinutes(1)); // Runs every minute
     }
@@ -120,13 +124,15 @@ public class ObjectPool<T> : IDisposable where T : class
     /// </remarks>
     private void PerformEvictionCheck(object? state)
     {
-        T[] objectsToCheck = _objectPool.ToArray();
+        var objectPool = (ObjectPool<T>)state!;
+        
+        T[] objectsToCheck = objectPool._objectPool.ToArray();
 
-        _evictionManager?.RunEviction(objectsToCheck, removeAction: (obj) =>
+        objectPool._evictionManager?.RunEviction(objectsToCheck, removeAction: (obj) =>
         {
             // We're popping off each object from the stack until we encounter the object
             // that we want to remove.
-            if (_objectPool.TryPop(out T? removed) && EqualityComparer<T>.Default.Equals(removed, obj))
+            if (objectPool._objectPool.TryPop(out T? removed) && EqualityComparer<T>.Default.Equals(removed, obj))
             {
                 Console.WriteLine($"[{DateTimeOffset.Now}] An idle object was removed from the pool. Pool count now = {Count}");
 
@@ -136,7 +142,7 @@ public class ObjectPool<T> : IDisposable where T : class
             else if (removed != null)
             {
                 // Return the object that we don't want to remove
-                _objectPool.Push(removed);
+                objectPool._objectPool.Push(removed);
 
                 //Console.WriteLine("Tried to remove the object, but it wasn't the target object");
             }

@@ -2,31 +2,25 @@
 
 public class ObjectMetadata
 {
-    // Backing fields
     private readonly object _sync = new();
-    private DateTimeOffset _createdAt = DateTimeOffset.Now;
-    private DateTimeOffset? _lastAccessedAt;
-    private DateTimeOffset? _lastReturnedAt;
 
-    // Public properties
+    private readonly DateTimeOffset _createdAt = DateTimeOffset.Now;
     public DateTimeOffset CreatedAt
     {
         get { lock (_sync) return _createdAt; }
     }
 
+    private DateTimeOffset? _lastAccessedAt;
     public DateTimeOffset? LastAccessedAt
     {
         get { lock (_sync) return _lastAccessedAt; }
-        set { lock (_sync) _lastAccessedAt = value; }
     }
 
+    private DateTimeOffset? _lastReturnedAt;
     public DateTimeOffset? LastReturnedAt
     {
         get { lock (_sync) return _lastReturnedAt; }
-        set { lock (_sync) _lastReturnedAt = value; }
     }
-
-    public TimeSpan Age => DateTimeOffset.Now - CreatedAt;
 
     /// <summary>
     /// Gets the idle time of the rented object that was returned to the pool.
