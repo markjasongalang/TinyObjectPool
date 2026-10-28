@@ -21,29 +21,29 @@ public class Program
             {
                 await using (RentedObject<MyClassWithReset> obj = pool.Rent())
                 {
-                    Console.WriteLine($"[{DateTime.Now}] Rented an object");
+                    Console.WriteLine($"[{DateTimeOffset.Now}] Rented an object");
                     await Task.Delay(TimeSpan.FromSeconds(2));
                     Console.WriteLine("here1");
 
                     obj.Unwrap().Name = "Object 1";
                 } // Dispose here
 
-                Console.WriteLine($"[{DateTime.Now}] Returned the object");
-                Console.WriteLine($"[{DateTime.Now}] Pool object count: {pool.Count}");
+                Console.WriteLine($"[{DateTimeOffset.Now}] Returned the object");
+                Console.WriteLine($"[{DateTimeOffset.Now}] Pool object count: {pool.Count}");
             }),
             Task.Run(async() =>
             {
                 await using (RentedObject<MyClassWithReset> obj = pool.Rent())
                 {
-                    Console.WriteLine($"[{DateTime.Now}] Rented an object");
+                    Console.WriteLine($"[{DateTimeOffset.Now}] Rented an object");
                     await Task.Delay(TimeSpan.FromSeconds(12));
                     Console.WriteLine("here2");
 
                     obj.Unwrap().Name = "Object 2";
                 } // Dispose here
 
-                Console.WriteLine($"[{DateTime.Now}] Returned the object");
-                Console.WriteLine($"[{DateTime.Now}] Pool object count: {pool.Count}");
+                Console.WriteLine($"[{DateTimeOffset.Now}] Returned the object");
+                Console.WriteLine($"[{DateTimeOffset.Now}] Pool object count: {pool.Count}");
             })
         };
 

@@ -17,11 +17,7 @@ public sealed class RentTests
             // Add explicit scope so the object would be returned before the assertion below
             using (RentedObject<SampleClassWithReset> obj1 = pool.Rent())
             {
-                Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Rented object");
-
                 await Task.Delay(2000);
-
-                Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 1: Returning object");
             }
 
             Assert.AreEqual(1, pool.Count);
@@ -31,15 +27,12 @@ public sealed class RentTests
 
         Task task2 = Task.Run(async () =>
         {
-            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Attempting to Rent...");
-
             Assert.AreEqual(0, pool.Count);
 
             // This should block/wait until task 1 above returns the object that it rented so this 
             // task could rent it after
-            using RentedObject<SampleClassWithReset> obj2 = pool.Rent();
-
-            Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Task 2: Successfully Rented object!");
+            await using RentedObject<SampleClassWithReset> obj2 = pool.Rent();
+            
         });
 
         await Task.WhenAll(task1, task2);
@@ -53,17 +46,12 @@ public sealed class RentTests
             maxSize: 1);
 
         // Object 1
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 trying to rent");
-
+        // --------
         RentedObject<SampleClassWithReset> obj1 = pool.Rent(); // Intentionally doesn't include 'using'
-
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 1 successfully rented");
-
         Assert.AreEqual(0, pool.Count);
 
         // Object 2
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 trying to rent");
-
+        // --------
         // Asserts that the block inside throws and exception of type TimeoutException
         // and throws AssertFailedException if code does not throw exception or throws
         // exception of type other than TimeoutException.
@@ -73,8 +61,6 @@ public sealed class RentTests
             // An exception should be thrown here because the object above wasn't returned
             using RentedObject<SampleClassWithReset> obj2 = pool.Rent();
         });
-
-        Console.WriteLine($"[{DateTime.UtcNow:HH:mm:ss}] Object 2 successfully rented");
     }
 
     [TestMethod]

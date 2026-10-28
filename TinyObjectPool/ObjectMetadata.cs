@@ -4,30 +4,29 @@ public class ObjectMetadata
 {
     // Backing fields
     private readonly object _sync = new();
-    private DateTime _createdAt = DateTime.UtcNow;
-    private DateTime? _lastAccessedAt;
-    private DateTime? _lastReturnedAt;
+    private DateTimeOffset _createdAt = DateTimeOffset.Now;
+    private DateTimeOffset? _lastAccessedAt;
+    private DateTimeOffset? _lastReturnedAt;
 
     // Public properties
-    public DateTime CreatedAt
+    public DateTimeOffset CreatedAt
     {
         get { lock (_sync) return _createdAt; }
-        set { lock (_sync) _createdAt = value; }
     }
 
-    public DateTime? LastAccessedAt
+    public DateTimeOffset? LastAccessedAt
     {
         get { lock (_sync) return _lastAccessedAt; }
         set { lock (_sync) _lastAccessedAt = value; }
     }
 
-    public DateTime? LastReturnedAt
+    public DateTimeOffset? LastReturnedAt
     {
         get { lock (_sync) return _lastReturnedAt; }
         set { lock (_sync) _lastReturnedAt = value; }
     }
 
-    public TimeSpan Age => DateTime.UtcNow - CreatedAt;
+    public TimeSpan Age => DateTimeOffset.Now - CreatedAt;
 
     /// <summary>
     /// Gets the idle time of the rented object that was returned to the pool.
@@ -43,13 +42,13 @@ public class ObjectMetadata
         if (LastReturnedAt.HasValue && LastAccessedAt.HasValue && 
             LastReturnedAt.Value > LastAccessedAt.Value)
         {
-            return DateTime.UtcNow - LastReturnedAt.Value;
+            return DateTimeOffset.UtcNow - LastReturnedAt.Value;
         }
 
         return null;
     }
 
-    internal void RecordAccess(DateTime timestamp)
+    internal void RecordAccess(DateTimeOffset timestamp)
     {
         lock (_sync)
         {
@@ -57,7 +56,7 @@ public class ObjectMetadata
         }
     }
 
-    internal void RecordReturn(DateTime timestamp)
+    internal void RecordReturn(DateTimeOffset timestamp)
     {
         lock (_sync)
         {

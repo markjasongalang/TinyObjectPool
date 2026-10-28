@@ -58,7 +58,7 @@ public class EvictionManager<T> : IDisposable where T : class
             if (!_metadata.TryGetValue(obj, out ObjectMetadata? objectMetadata))
             {
                 //MyClassWithReset convertedObj = (MyClassWithReset)Convert.ChangeType(obj, typeof(MyClassWithReset));
-                //Console.WriteLine($"[{DateTime.Now}] {convertedObj.Name} here at obj metadata check");
+                //Console.WriteLine($"[{DateTimeOffset.Now}] {convertedObj.Name} here at obj metadata check");
 
                 // BUG SCENARIO:
                 // -------------
@@ -94,7 +94,7 @@ public class EvictionManager<T> : IDisposable where T : class
 
         stopWatch.Stop();
 
-        Console.WriteLine($"[{DateTime.Now}] Eviction run completed: {evictedCount} object(s) evicted in {stopWatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"[{DateTimeOffset.Now}] Eviction run completed: {evictedCount} object(s) evicted in {stopWatch.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
@@ -128,7 +128,7 @@ public class EvictionManager<T> : IDisposable where T : class
         {
             if (_metadata.TryGetValue(obj, out ObjectMetadata? objectMetadata))
             {
-                objectMetadata.RecordAccess(DateTime.UtcNow);
+                objectMetadata.RecordAccess(DateTimeOffset.Now);
             }
         }
     }
@@ -143,7 +143,7 @@ public class EvictionManager<T> : IDisposable where T : class
         {
             if (_metadata.TryGetValue(obj, out ObjectMetadata? objectMetadata))
             {
-                objectMetadata.RecordReturn(DateTime.UtcNow);
+                objectMetadata.RecordReturn(DateTimeOffset.Now);
             }
         }
     }

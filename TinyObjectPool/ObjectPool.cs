@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace TinyObjectPool;
+﻿namespace TinyObjectPool;
 
 /// <summary>
 /// A thread-safe and bounded object pool that mainly utilizes <see cref="Stack{T}"/> and <see cref="SemaphoreSlim"/>.
@@ -130,17 +128,17 @@ public class ObjectPool<T> : IDisposable where T : class
             // that we want to remove.
             if (_objectPool.TryPop(out T? removed) && EqualityComparer<T>.Default.Equals(removed, obj))
             {
-                Console.WriteLine($"[{DateTime.Now}] An idle object was removed from the pool. Pool count now = {Count}");
+                Console.WriteLine($"[{DateTimeOffset.Now}] An idle object was removed from the pool. Pool count now = {Count}");
 
                 //MyClassWithReset convertedObj = (MyClassWithReset)Convert.ChangeType(obj, typeof(MyClassWithReset));
-                //Console.WriteLine($"[{DateTime.Now}] {convertedObj.Name} was removed. Pool count now: {Count}");
+                //Console.WriteLine($"[{DateTimeOffset.Now}] {convertedObj.Name} was removed. Pool count now: {Count}");
             }
             else if (removed != null)
             {
                 // Return the object that we don't want to remove
                 _objectPool.Push(removed);
 
-                //Console.WriteLine("Tried to remove the object but it wasn't the target object");
+                //Console.WriteLine("Tried to remove the object, but it wasn't the target object");
             }
         });
 
