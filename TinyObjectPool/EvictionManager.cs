@@ -5,6 +5,8 @@ namespace TinyObjectPool;
 public class EvictionManager<T> : IDisposable where T : class
 {
     private readonly TimeSpan _idleTimeout;
+    private readonly TimeProvider _timeProvider;
+    
     private readonly Dictionary<T, ObjectMetadata> _metadata;
     private readonly object _lock = new();
 
@@ -32,9 +34,12 @@ public class EvictionManager<T> : IDisposable where T : class
     /// Creates a new eviction manager instance.
     /// </summary>
     /// <param name="idleTimeout">The maximum time period that an unused object can stay in the pool.</param>
-    public EvictionManager(TimeSpan idleTimeout)
+    /// <param name="timeProvider">The <see cref="TimeProvider"/> instance in coordination with an <see cref="ObjectPool{T}"/> instance.</param>
+    public EvictionManager(TimeSpan idleTimeout, TimeProvider timeProvider)
     {
         _idleTimeout = idleTimeout;
+        _timeProvider = timeProvider;
+        
         _metadata = new Dictionary<T, ObjectMetadata>();
     }
 
@@ -94,7 +99,7 @@ public class EvictionManager<T> : IDisposable where T : class
 
         stopWatch.Stop();
 
-        Console.WriteLine($"[{DateTimeOffset.Now}] Eviction run completed: {evictedCount} object(s) evicted in {stopWatch.ElapsedMilliseconds}ms");
+        Console.WriteLine($"[{_timeProvider.GetLocalNow()}] Eviction run completed: {evictedCount} object(s) evicted in {stopWatch.ElapsedMilliseconds}ms");
     }
 
     /// <summary>
@@ -110,7 +115,7 @@ public class EvictionManager<T> : IDisposable where T : class
     {
         lock (_lock)
         {
-            _metadata.TryAdd(obj, new ObjectMetadata());
+            _metadata.TryAdd(obj, new ObjectMetadata(_timeProvider));
         }
     }
 
@@ -128,7 +133,7 @@ public class EvictionManager<T> : IDisposable where T : class
         {
             if (_metadata.TryGetValue(obj, out ObjectMetadata? objectMetadata))
             {
-                objectMetadata.RecordAccess(DateTimeOffset.Now);
+                objectMetadata.RecordAccess(_timeProvider.GetLocalNow());
             }
         }
     }
@@ -143,7 +148,7 @@ public class EvictionManager<T> : IDisposable where T : class
         {
             if (_metadata.TryGetValue(obj, out ObjectMetadata? objectMetadata))
             {
-                objectMetadata.RecordReturn(DateTimeOffset.Now);
+                objectMetadata.RecordReturn(_timeProvider.GetLocalNow());
             }
         }
     }
@@ -176,6 +181,6 @@ public class EvictionManager<T> : IDisposable where T : class
         _disposed = true;
         _metadata.Clear();
 
-        Console.WriteLine("Eviction manager disposed");
+        Console.WriteLine($"[{_timeProvider.GetLocalNow()}] Eviction manager disposed");
     }
 }

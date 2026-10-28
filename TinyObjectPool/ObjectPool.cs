@@ -1,4 +1,6 @@
-﻿namespace TinyObjectPool;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace TinyObjectPool;
 
 /// <summary>
 /// A thread-safe and bounded object pool that mainly utilizes <see cref="Stack{T}"/> and <see cref="SemaphoreSlim"/>.
@@ -26,8 +28,8 @@ public class ObjectPool<T> : IDisposable where T : class
     private readonly TimeSpan _defaultTimeout;
     private readonly object _lock = new(); // Always private and dedicated
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
-
-    private readonly TimeProvider? _timeProvider;
+    
+    private readonly TimeProvider _timeProvider;
     
     /// <summary>
     /// Eviction manager for idle timeout (optional)
@@ -93,10 +95,10 @@ public class ObjectPool<T> : IDisposable where T : class
     //[MemberNotNull(nameof(_evictionManager))] // This is for removing the warning if we initialized a non-nullable field outside the constructor
     private void InitEviction()
     {
-        _evictionManager = new EvictionManager<T>(idleTimeout: TimeSpan.FromMinutes(5));
+        _evictionManager = new EvictionManager<T>(idleTimeout: TimeSpan.FromMinutes(5), _timeProvider);
 
         // Set up periodic checks
-        _evictionCheckTimer = _timeProvider!.CreateTimer(
+        _evictionCheckTimer = _timeProvider.CreateTimer(
             PerformEvictionCheck,
             state: this,
             dueTime: TimeSpan.FromMinutes(1), // Delay before the first call of the callback
@@ -134,21 +136,21 @@ public class ObjectPool<T> : IDisposable where T : class
             // that we want to remove.
             if (objectPool._objectPool.TryPop(out T? removed) && EqualityComparer<T>.Default.Equals(removed, obj))
             {
-                Console.WriteLine($"[{DateTimeOffset.Now}] An idle object was removed from the pool. Pool count now = {Count}");
+                Console.WriteLine($"[{_timeProvider.GetLocalNow()}] An idle object was removed from the pool. Pool count now = {Count}");
 
                 //MyClassWithReset convertedObj = (MyClassWithReset)Convert.ChangeType(obj, typeof(MyClassWithReset));
-                //Console.WriteLine($"[{DateTimeOffset.Now}] {convertedObj.Name} was removed. Pool count now: {Count}");
+                //Console.WriteLine($"[{_timeProvider.GetLocalNow()}] {convertedObj.Name} was removed. Pool count now: {Count}");
             }
             else if (removed != null)
             {
                 // Return the object that we don't want to remove
                 objectPool._objectPool.Push(removed);
 
-                //Console.WriteLine("Tried to remove the object, but it wasn't the target object");
+                //Console.WriteLine($"[{_timeProvider.GetLocalNow()}] Tried to remove the object, but it wasn't the target object");
             }
         });
 
-        //Console.WriteLine($"Pool count = {Count}");
+        //Console.WriteLine($"[{_timeProvider.GetLocalNow()}] Pool count = {Count}");
     }
 
     /// <summary>

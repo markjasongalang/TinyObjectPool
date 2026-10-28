@@ -3,7 +3,7 @@
 namespace TinyObjectPool.Tests;
 
 [TestClass]
-public class DisposeTests
+public sealed class DisposeTests
 {
     [TestMethod]
     public void Dispose_RentedObjectNotReturned_PoolDisposesObjects()

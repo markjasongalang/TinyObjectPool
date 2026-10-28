@@ -10,11 +10,13 @@ public class Program
         Console.Clear();
 #endif
 
+        // TODO: Move this to EvictionTests.cs
+        
         using var pool = new ObjectPool<MyClassWithReset>(
             factory: () => new MyClassWithReset(),
             enableEviction: true,
             maxSize: 10);
-
+        
         var rentTasks = new Task[]
         {
             Task.Run(async() =>
@@ -24,10 +26,10 @@ public class Program
                     Console.WriteLine($"[{DateTimeOffset.Now}] Rented an object");
                     await Task.Delay(TimeSpan.FromSeconds(2));
                     Console.WriteLine("here1");
-
+        
                     obj.Unwrap().Name = "Object 1";
                 } // Dispose here
-
+        
                 Console.WriteLine($"[{DateTimeOffset.Now}] Returned the object");
                 Console.WriteLine($"[{DateTimeOffset.Now}] Pool object count: {pool.Count}");
             }),
@@ -38,17 +40,17 @@ public class Program
                     Console.WriteLine($"[{DateTimeOffset.Now}] Rented an object");
                     await Task.Delay(TimeSpan.FromSeconds(12));
                     Console.WriteLine("here2");
-
+        
                     obj.Unwrap().Name = "Object 2";
                 } // Dispose here
-
+        
                 Console.WriteLine($"[{DateTimeOffset.Now}] Returned the object");
                 Console.WriteLine($"[{DateTimeOffset.Now}] Pool object count: {pool.Count}");
             })
         };
-
+        
         await Task.WhenAll(rentTasks);
-
+        
         // Intentional delay so we can observe the background eviction
         await Task.Delay(TimeSpan.FromMinutes(15));
         Console.WriteLine("Program exiting...");

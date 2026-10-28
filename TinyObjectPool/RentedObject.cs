@@ -71,7 +71,7 @@ public struct RentedObject<T> : IDisposable, IAsyncDisposable where T : class
     /// </summary>
     /// <returns>The parent object pool of this instance.</returns>
     /// <remarks>
-    /// The <see cref="Lock"/> exists to protect this object's fields (_isDisposed and _isPool).
+    /// The <see cref="Lock"/> exists to protect this object's fields (<see cref="_isDisposed"/> and <see cref="_pool"/>).
     /// More importantly, decide and mutate under the lock, then act afterward. This same shape works
     /// for things like raising events (copy the handler under the lock, invoke it outside) or processing
     /// a queue (dequeue under the lock, process outside).

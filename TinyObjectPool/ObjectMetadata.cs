@@ -2,9 +2,10 @@
 
 public class ObjectMetadata
 {
+    private readonly TimeProvider _timeProvider;
     private readonly object _sync = new();
 
-    private readonly DateTimeOffset _createdAt = DateTimeOffset.Now;
+    private DateTimeOffset _createdAt;
     public DateTimeOffset CreatedAt
     {
         get { lock (_sync) return _createdAt; }
@@ -22,6 +23,12 @@ public class ObjectMetadata
         get { lock (_sync) return _lastReturnedAt; }
     }
 
+    public ObjectMetadata(TimeProvider timeProvider)
+    {
+        _timeProvider = timeProvider;
+        _createdAt = _timeProvider.GetLocalNow();
+    }
+
     /// <summary>
     /// Gets the idle time of the rented object that was returned to the pool.
     /// </summary>
@@ -36,7 +43,7 @@ public class ObjectMetadata
         if (LastReturnedAt.HasValue && LastAccessedAt.HasValue && 
             LastReturnedAt.Value > LastAccessedAt.Value)
         {
-            return DateTimeOffset.UtcNow - LastReturnedAt.Value;
+            return _timeProvider.GetLocalNow() - LastReturnedAt.Value;
         }
 
         return null;
