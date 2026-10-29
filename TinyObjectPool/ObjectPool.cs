@@ -69,6 +69,7 @@ public class ObjectPool<T> : IDisposable where T : class
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _maxSize = maxSize;
         _reset = reset;
+        _timeProvider = timeProvider ?? TimeProvider.System;
 
         // The pool must either implement IResettable or define a reset method
         if (reset == null && !typeof(IResettable).IsAssignableFrom(typeof(T)))
@@ -84,7 +85,6 @@ public class ObjectPool<T> : IDisposable where T : class
 
         if (enableEviction)
         {
-            _timeProvider = timeProvider ?? TimeProvider.System;
             InitEviction();
         }
     }
