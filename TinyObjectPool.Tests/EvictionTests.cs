@@ -6,7 +6,23 @@ namespace TinyObjectPool.Tests;
 [TestClass]
 public sealed class EvictionTests
 {
+    /// <remarks>
+    /// <para>
+    /// As a constructor parameter of a test class (starting with v3.6). This way is recommended over using the property,
+    /// because it gives access to the object in the constructor.
+    /// </para>
+    /// <para>
+    /// Refer to https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-writing-tests-testcontext
+    /// </para>
+    /// </remarks>
+    private readonly TestContext _testContext;
+
     private object _lock = null!;
+
+    public EvictionTests(TestContext testContext)
+    {
+        _testContext = testContext;
+    }
 
     /// <summary>
     /// <para>
@@ -141,5 +157,94 @@ public sealed class EvictionTests
 
         fakeTime.Advance(TimeSpan.FromMinutes(5));
         Assert.AreEqual(0, pool.Count);
+    }
+
+    [TestMethod]
+    public async Task Evict_TwoIdleObjectsAndOneActiveObject_OnePoolCount()
+    {
+        var fakeTime = new FakeTimeProvider();
+        var startDateTime = new DateTimeOffset(
+            year: 2026, 
+            month: 11, 
+            day: 03, 
+            hour: 11, 
+            minute: 09, 
+            second: 10, 
+            offset: TimeSpan.Zero);
+
+        fakeTime.SetUtcNow(startDateTime);
+
+        using var pool = new ObjectPool<SampleClassWithReset>(
+            factory: () => new SampleClassWithReset(),
+            enableEviction: true,
+            timeProvider: fakeTime,
+            maxSize: 10);
+
+        var startedCount = 0;
+
+        var twoTasksStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var thirdTaskStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Task task1 = Task.Run(async () =>
+        {
+            await using (RentedObject<SampleClassWithReset> obj1 = pool.Rent())
+            {
+                obj1.Unwrap().Name = "Object 1";
+                
+                lock (_lock)
+                {
+                    startedCount++;
+                    if (startedCount >= 2)
+                    {
+                        twoTasksStarted.SetResult();
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(10), fakeTime, _testContext.CancellationToken);
+            }
+        }, _testContext.CancellationToken);
+
+        Task task2 = Task.Run(async () =>
+        {
+            await using (RentedObject<SampleClassWithReset> obj2 = pool.Rent())
+            {
+                obj2.Unwrap().Name = "Object 2";
+                
+                lock (_lock)
+                {
+                    startedCount++;
+                    if (startedCount >= 2)
+                    {
+                        twoTasksStarted.SetResult();
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(3), fakeTime, _testContext.CancellationToken);
+            }
+        }, _testContext.CancellationToken);
+
+        Task task3 = Task.Run(async () =>
+        {
+            await using (RentedObject<SampleClassWithReset> obj3 = pool.Rent())
+            {
+                obj3.Unwrap().Name = "Object 3";
+
+                thirdTaskStarted.SetResult();
+
+                await Task.Delay(TimeSpan.FromMinutes(6), fakeTime, _testContext.CancellationToken);
+            }
+        }, _testContext.CancellationToken);
+
+        await twoTasksStarted.Task;
+        fakeTime.Advance(TimeSpan.FromSeconds(10));
+
+        await Task.WhenAll(task1, task2);
+        Assert.AreEqual(2, pool.Count);
+
+        fakeTime.Advance(TimeSpan.FromMinutes(6));
+        Assert.AreEqual(1, pool.Count);
     }
 }
