@@ -87,6 +87,10 @@ public class EvictionManager<T> : IDisposable where T : class
             }
 
             TimeSpan? curObjIdleTime = objectMetadata.GetIdleTime();
+            //Console.WriteLine($"curObjIdleTime = {curObjIdleTime}");
+            //Console.WriteLine($"lastAccessedAt = {objectMetadata.LastAccessedAt}");
+            //Console.WriteLine($"lastReturnedAt = {objectMetadata.LastReturnedAt}");
+            //Console.WriteLine($"_idleTimeout = {_idleTimeout}");
             if (curObjIdleTime != null && curObjIdleTime >= _idleTimeout)
             {
                 // Remove from pool (implementation is delegated to ObjectPool itself)

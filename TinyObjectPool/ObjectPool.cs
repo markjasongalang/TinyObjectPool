@@ -69,6 +69,10 @@ public class ObjectPool<T> : IDisposable where T : class
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _maxSize = maxSize;
         _reset = reset;
+
+        // "At the end of the day, we expect almost no one will use anything other than TimeProvider.System
+        // in production usage." - Stephen Toub (from Microsoft)
+        // Refer to https://www.eriklieben.com/posts/net8_timeprovider_for_unit_tests/
         _timeProvider = timeProvider ?? TimeProvider.System;
 
         // The pool must either implement IResettable or define a reset method
@@ -182,14 +186,14 @@ public class ObjectPool<T> : IDisposable where T : class
             if (_objectPool.Count > 0) // Reuse an idle object if available
             {
                 item = _objectPool.Pop();
-                _evictionManager?.RecordAccess(item);
             }
             else // Otherwise, create a new object (guaranteed <= _maxSize by semaphore);
             {
                 item = _factory(); // Delegate creation to the factory
                 _evictionManager?.TrackObject(item);
-                _evictionManager?.RecordAccess(item);
             }
+
+            _evictionManager?.RecordAccess(item);
         }
 
         return new RentedObject<T>(this, item);

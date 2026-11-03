@@ -5,7 +5,7 @@ public class ObjectMetadata
     private readonly TimeProvider _timeProvider;
     private readonly object _sync = new();
 
-    private DateTimeOffset _createdAt;
+    private readonly DateTimeOffset _createdAt;
     public DateTimeOffset CreatedAt
     {
         get { lock (_sync) return _createdAt; }
