@@ -57,8 +57,8 @@ public sealed class EvictionTests
         var startDateTime = new DateTimeOffset(2026, 11, 01, 22, 01, 0, TimeSpan.Zero);
         fakeTime.SetUtcNow(startDateTime);
 
-        using var pool = new ObjectPool<MyClassWithReset>(
-            factory: () => new MyClassWithReset(),
+        using var pool = new ObjectPool<SampleClassWithReset>(
+            factory: () => new SampleClassWithReset(),
             enableEviction: true,
             timeProvider: fakeTime,
             maxSize: 10);
@@ -74,7 +74,7 @@ public sealed class EvictionTests
         {
             Task.Run(async () =>
             {
-                await using (RentedObject<MyClassWithReset> obj = pool.Rent())
+                await using (RentedObject<SampleClassWithReset> obj = pool.Rent())
                 {
                     obj.Unwrap().Name = "Object 1";
 
@@ -92,7 +92,7 @@ public sealed class EvictionTests
             }),
             Task.Run(async () =>
             {
-                await using (RentedObject<MyClassWithReset> obj = pool.Rent())
+                await using (RentedObject<SampleClassWithReset> obj = pool.Rent())
                 {
                     obj.Unwrap().Name = "Object 2";
 
@@ -110,7 +110,7 @@ public sealed class EvictionTests
             }),
             Task.Run(async () =>
             {
-                await using (RentedObject<MyClassWithReset> obj = pool.Rent())
+                await using (RentedObject<SampleClassWithReset> obj = pool.Rent())
                 {
                     obj.Unwrap().Name = "Object 3";
 
