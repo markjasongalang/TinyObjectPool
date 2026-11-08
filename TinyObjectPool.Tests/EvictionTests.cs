@@ -244,6 +244,7 @@ public sealed class EvictionTests
         await Task.WhenAll(task1, task2);
         Assert.AreEqual(2, pool.Count);
 
+        await thirdTaskStarted.Task;
         fakeTime.Advance(TimeSpan.FromMinutes(6));
         Assert.AreEqual(1, pool.Count);
     }
@@ -302,5 +303,78 @@ public sealed class EvictionTests
         await Task.WhenAll(rentTasks);
 
         Assert.AreEqual(10, pool.Count);
+    }
+
+    [TestMethod]
+    public async Task EvictionDisabled_RentAndReturnObjects_NoIdleObjectsRemovedFromPool()
+    {
+        var fakeTime = new FakeTimeProvider();
+        var startDateTime = new DateTimeOffset(
+            year: 2026,
+            month: 11,
+            day: 08,
+            hour: 15,
+            minute: 33,
+            second: 43,
+            offset: TimeSpan.Zero);
+        
+        fakeTime.SetUtcNow(startDateTime);
+
+        using var pool = new ObjectPool<SampleClassWithReset>(
+            factory: () => new SampleClassWithReset(),
+            enableEviction: false,
+            maxSize: 10);
+
+        async Task RentObjectAsync(string name, TimeSpan duration, TaskCompletionSource started)
+        {
+            await using var obj = pool.Rent();
+            obj.Unwrap().Name = name;
+
+            // Register the timer before signaling readiness
+            Task delayTask = Task.Delay(duration, fakeTime, _testContext.CancellationToken);
+
+            started.SetResult(); // Background operation
+
+            await delayTask;
+        }
+
+        // TaskCompletionSource - A manually controlled asynchronous notification mechanism.
+        // In our case, we're coordinating when virtual time can advance.
+        var firstStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thirdStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Start two concurrent background operations
+        Task firstTask = Task.Run(
+            () => RentObjectAsync("Object 1", TimeSpan.FromSeconds(54), firstStarted),
+            _testContext.CancellationToken);
+
+        Task secondTask = Task.Run(
+            () => RentObjectAsync("Object 2", TimeSpan.FromSeconds(10), secondStarted),
+            _testContext.CancellationToken);
+
+        await Task.WhenAll(firstStarted.Task, secondStarted.Task); // Coordinating operation
+        fakeTime.Advance(TimeSpan.FromSeconds(55));
+
+        await Task.WhenAll(firstTask, secondTask);
+        Assert.AreEqual(2, pool.Count);
+
+        // Start another background operation
+        Task thirdTask = Task.Run(
+            () => RentObjectAsync("Object 3", TimeSpan.FromMinutes(3), thirdStarted),
+            _testContext.CancellationToken);
+
+        await thirdStarted.Task;
+        fakeTime.Advance(TimeSpan.FromMinutes(3));
+
+        await thirdTask;
+
+        // Note: This should still be 2 since we'll use an available object
+        // (not creating a new one)
+        Assert.AreEqual(2, pool.Count);
+
+        // Objects should remain in the pool since eviction is disabled
+        fakeTime.Advance(TimeSpan.FromMinutes(5));
+        Assert.AreEqual(2, pool.Count);
     }
 }
