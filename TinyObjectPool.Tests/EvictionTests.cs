@@ -247,4 +247,60 @@ public sealed class EvictionTests
         fakeTime.Advance(TimeSpan.FromMinutes(6));
         Assert.AreEqual(1, pool.Count);
     }
+
+    [TestMethod]
+    public async Task Evict_MultipleRentedObjectsPastFirstEvictionCheckThenReturned_FullPool()
+    {
+        var fakeTime = new FakeTimeProvider();
+        var startDateTime = new DateTimeOffset(
+            year: 2026,
+            month: 11,
+            day: 08,
+            hour: 09,
+            minute: 01,
+            second: 12,
+            offset: TimeSpan.Zero);
+
+        fakeTime.SetUtcNow(startDateTime);
+
+        using var pool = new ObjectPool<SampleClassWithReset>(
+            factory: () => new SampleClassWithReset(),
+            enableEviction: true,
+            timeProvider: fakeTime,
+            maxSize: 10);
+
+        var startedCount = 0;
+        var allStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Rent 10 objects concurrently, each with a 2-second delay before returning to the pool.
+        var rentTasks = new Task[10];
+        for (var i = 0; i < 10; i++)
+        {
+            rentTasks[i] = Task.Run(async () =>
+            {
+                await using (RentedObject<SampleClassWithReset> obj = pool.Rent())
+                {
+                    obj.Unwrap().Name = $"Object {i + 1}";
+
+                    lock (_lock)
+                    {
+                        startedCount++;
+                        if (startedCount >= 10)
+                        {
+                            allStarted.SetResult();
+                        }
+                    }
+
+                    await Task.Delay(TimeSpan.FromMinutes(6), fakeTime, _testContext.CancellationToken);
+                }
+            }, _testContext.CancellationToken);
+        }
+
+        await allStarted.Task;
+        fakeTime.Advance(TimeSpan.FromMinutes(6));
+
+        await Task.WhenAll(rentTasks);
+
+        Assert.AreEqual(10, pool.Count);
+    }
 }
