@@ -53,7 +53,7 @@ public sealed class EvictionTests
         {
             obj.Unwrap().Name = "Object 1";
             
-            Task delay = Task.Delay(TimeSpan.FromSeconds(2), fakeTime);
+            Task delay = Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
             fakeTime.Advance(TimeSpan.FromSeconds(2));
             await Task.WhenAny(delay);
         }
@@ -103,7 +103,7 @@ public sealed class EvictionTests
                         }
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime);
+                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
                 } // Returned here
             }),
             Task.Run(async () =>
@@ -121,7 +121,7 @@ public sealed class EvictionTests
                         }
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime);
+                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
                 }
             }),
             Task.Run(async () =>
@@ -139,7 +139,7 @@ public sealed class EvictionTests
                         }
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime);
+                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
                 }
             })
         };
