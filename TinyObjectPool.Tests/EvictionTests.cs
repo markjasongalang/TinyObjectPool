@@ -53,9 +53,11 @@ public sealed class EvictionTests
         {
             obj.Unwrap().Name = "Object 1";
             
-            Task delay = Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+            Task delayTask = Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+
             fakeTime.Advance(TimeSpan.FromSeconds(2));
-            await Task.WhenAny(delay);
+
+            await delayTask;
         }
         // --- The idle time will start to be measured at this point ---
 
@@ -94,6 +96,8 @@ public sealed class EvictionTests
                 {
                     obj.Unwrap().Name = "Object 1";
 
+                    Task delayTask = Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+
                     lock (_lock)
                     {
                         startedCount++;
@@ -103,7 +107,7 @@ public sealed class EvictionTests
                         }
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+                    await delayTask;
                 } // Returned here
             }),
             Task.Run(async () =>
@@ -112,6 +116,8 @@ public sealed class EvictionTests
                 {
                     obj.Unwrap().Name = "Object 2";
 
+                    Task delayTask = Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+
                     lock (_lock)
                     {
                         startedCount++;
@@ -121,7 +127,7 @@ public sealed class EvictionTests
                         }
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+                    await delayTask;
                 }
             }),
             Task.Run(async () =>
@@ -130,6 +136,8 @@ public sealed class EvictionTests
                 {
                     obj.Unwrap().Name = "Object 3";
 
+                    Task delayTask = Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+
                     lock (_lock)
                     {
                         startedCount++;
@@ -139,7 +147,7 @@ public sealed class EvictionTests
                         }
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(2), fakeTime, _testContext.CancellationToken);
+                    await delayTask;
                 }
             })
         };
@@ -194,6 +202,8 @@ public sealed class EvictionTests
             {
                 obj1.Unwrap().Name = "Object 1";
                 
+                Task delayTask = Task.Delay(TimeSpan.FromSeconds(10), fakeTime, _testContext.CancellationToken);
+
                 lock (_lock)
                 {
                     startedCount++;
@@ -203,7 +213,7 @@ public sealed class EvictionTests
                     }
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(10), fakeTime, _testContext.CancellationToken);
+                await delayTask;
             }
         }, _testContext.CancellationToken);
 
@@ -213,6 +223,8 @@ public sealed class EvictionTests
             {
                 obj2.Unwrap().Name = "Object 2";
                 
+                Task delayTask = Task.Delay(TimeSpan.FromSeconds(3), fakeTime, _testContext.CancellationToken);
+
                 lock (_lock)
                 {
                     startedCount++;
@@ -222,7 +234,7 @@ public sealed class EvictionTests
                     }
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(3), fakeTime, _testContext.CancellationToken);
+                await delayTask;
             }
         }, _testContext.CancellationToken);
 
@@ -232,9 +244,11 @@ public sealed class EvictionTests
             {
                 obj3.Unwrap().Name = "Object 3";
 
+                Task delayTask = Task.Delay(TimeSpan.FromMinutes(6), fakeTime, _testContext.CancellationToken);
+
                 thirdTaskStarted.SetResult();
 
-                await Task.Delay(TimeSpan.FromMinutes(6), fakeTime, _testContext.CancellationToken);
+                await delayTask;
             }
         }, _testContext.CancellationToken);
 
@@ -283,6 +297,8 @@ public sealed class EvictionTests
                 {
                     obj.Unwrap().Name = $"Object {i + 1}";
 
+                    Task delayTask = Task.Delay(TimeSpan.FromMinutes(6), fakeTime, _testContext.CancellationToken);
+
                     lock (_lock)
                     {
                         startedCount++;
@@ -292,7 +308,7 @@ public sealed class EvictionTests
                         }
                     }
 
-                    await Task.Delay(TimeSpan.FromMinutes(6), fakeTime, _testContext.CancellationToken);
+                    await delayTask;
                 }
             }, _testContext.CancellationToken);
         }
