@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace TinyObjectPool;
 
@@ -28,9 +29,9 @@ public class ObjectPool<T> : IDisposable where T : class
     private readonly TimeSpan _defaultTimeout;
     private readonly object _lock = new(); // Always private and dedicated
     private readonly SemaphoreSlim _semaphore; // Thread-agnostic (any thread can call Release method)
-    
+    private readonly ILogger<ObjectPool<T>> _logger;
     private readonly TimeProvider _timeProvider;
-    
+
     /// <summary>
     /// Eviction manager for idle timeout (optional)
     /// </summary>
@@ -64,7 +65,8 @@ public class ObjectPool<T> : IDisposable where T : class
         bool enableEviction = false,
         TimeProvider? timeProvider = null,
         Action<T>? reset = null,
-        TimeSpan? defaultTimeout = null)
+        TimeSpan? defaultTimeout = null,
+        ILogger<ObjectPool<T>>? logger = null)
     {
         _factory = factory ?? throw new ArgumentNullException(nameof(factory));
         _maxSize = maxSize;
@@ -74,6 +76,17 @@ public class ObjectPool<T> : IDisposable where T : class
         // in production usage." - Stephen Toub (from Microsoft)
         // Refer to https://www.eriklieben.com/posts/net8_timeprovider_for_unit_tests/
         _timeProvider = timeProvider ?? TimeProvider.System;
+
+        // NullLogger<T>.Instance
+        // - A concrete, operational implementation of ILogger<T> that performs safe, empty no-ops when logging methods
+        // are called.
+        _logger = logger ?? NullLogger<ObjectPool<T>>.Instance;
+
+        _logger.LogInformation(
+            "ObjectPool of type '{Type}' created with MaxSize={MaxSize}, Eviction={EvictionEnabled}",
+            typeof(T).Name, 
+            maxSize, 
+            enableEviction);
 
         // The pool must either implement IResettable or define a reset method
         if (reset == null && !typeof(IResettable).IsAssignableFrom(typeof(T)))
@@ -107,10 +120,14 @@ public class ObjectPool<T> : IDisposable where T : class
             state: this,
             dueTime: TimeSpan.FromMinutes(1), // Delay before the first call of the callback
             period: TimeSpan.FromMinutes(1)); // Runs every minute
+
+        _logger.LogInformation($"Eviction check will begin after 1 minute");
     }
 
     /// <summary>
-    /// Rearranges the object pool (stack) until it finds and remove the object to be evicted.
+    /// Snapshots the idle objects and asks <see cref="EvictionManager{T}.RunEviction(IEnumerable{T}, Action{T})"/> which ones
+    /// to evict. Removal is top-of-stack only: a non-matching object is popped and immediately pushed back, so a buried expired
+    /// object is reported by a Debug log instead of removed.
     /// </summary>
     /// <param name="state">
     /// An object containing application-specific information relevant to the method invoked by this method delegate, or null.
@@ -132,29 +149,45 @@ public class ObjectPool<T> : IDisposable where T : class
     {
         var objectPool = (ObjectPool<T>)state!;
         
+        // Returns elements in LIFO order (top first)
         T[] objectsToCheck = objectPool._objectPool.ToArray();
 
         objectPool._evictionManager?.RunEviction(objectsToCheck, removeAction: (obj) =>
         {
-            // We're popping off each object from the stack until we encounter the object
-            // that we want to remove.
+            // We're popping off an object from the stack and immediately push it back on mismatch
             if (objectPool._objectPool.TryPop(out T? removed) && EqualityComparer<T>.Default.Equals(removed, obj))
             {
-                Console.WriteLine($"[{_timeProvider.GetLocalNow()}] An idle object was removed from the pool. Pool count now = {Count}");
+                _logger.LogInformation("An idle object was removed from the pool. Pool count now = {Count}", Count);
 
                 //MyClassWithReset convertedObj = (MyClassWithReset)Convert.ChangeType(obj, typeof(MyClassWithReset));
-                //Console.WriteLine($"[{_timeProvider.GetLocalNow()}] {convertedObj.Name} was removed. Pool count now: {Count}");
+                //_logger.LogDebug("{ConvertedObjName} was removed. Pool count now: {Count}", convertedObj.Name, Count);
             }
             else if (removed != null)
             {
                 // Return the object that we don't want to remove
                 objectPool._objectPool.Push(removed);
 
-                //Console.WriteLine($"[{_timeProvider.GetLocalNow()}] Tried to remove the object, but it wasn't the target object");
+                // An object returned earlier becomes eligible for eviction before a newer one returned later that
+                // now sits on top of it. Since removal can only pop the top, the attempt fails and the popped object
+                // is pushed back, leaving the stack unchanged.
+                //
+                // In the TestConsoleApp scenario, two objects are returned at t=0 and t~5 respectively, with a 15-second
+                // idle timeout. The first one is eligible around t=15, while the second is still on top, so the log below appears
+                // and the first object is untracked even though it remains in the pool. Around t=20 the second object expires
+                // and is removed; the first is then removed as well.
+                // 
+                // To re-create this condition/scenario for testing:
+                // - Configure the pool to have eviction enabled
+                // - Configure the eviction manager to have a short idle timeout (e.g., 15 seconds)
+                // - Configure the eviction check timer to have have no delay and a short period (e.g., 4 seconds)
+                // - Rent 2 objects simultaneously
+                // - Delay the return of the 2nd rented object (e.g., 5 seconds)
+                // - Wait and observe the eviction until this log appears
+                _logger.LogDebug("Tried to remove the object, but it wasn't the target object");
             }
         });
 
-        //Console.WriteLine($"[{_timeProvider.GetLocalNow()}] Pool count = {Count}");
+        _logger.LogDebug("Pool count = {Count}", Count);
     }
 
     /// <summary>
@@ -196,6 +229,8 @@ public class ObjectPool<T> : IDisposable where T : class
             _evictionManager?.RecordAccess(item);
         }
 
+        _logger.LogInformation("Successfully rented an object of type '{Type}'", typeof(T).Name);
+
         return new RentedObject<T>(this, item);
     }
 
@@ -223,7 +258,7 @@ public class ObjectPool<T> : IDisposable where T : class
 
         lock (_lock) // We need to lock here since Stack<T> is not thread-safe
         {
-            // If the pool was disposed while an object was rented, dispose the returning object
+            // If the pool was disposed while an object was rented, ignore the returned object
             if (_isDisposed)
             {
                 if (item is IDisposable disposableItem)
@@ -231,6 +266,7 @@ public class ObjectPool<T> : IDisposable where T : class
                     disposableItem.Dispose();
                 }
 
+                _logger.LogWarning("Pool is already disposed, so the returned object will be ignored");
                 return;
             }
 
@@ -252,6 +288,8 @@ public class ObjectPool<T> : IDisposable where T : class
 
         // Release the semaphore so a waiting Rent() thread can wake up
         _semaphore.Release();
+
+        _logger.LogInformation("Object of type '{Type}' returned to the pool", typeof(T).Name);
     }
 
     public void Dispose()
@@ -281,5 +319,7 @@ public class ObjectPool<T> : IDisposable where T : class
             // Dispose synchronization primitive
             _semaphore.Dispose();
         }
+
+        _logger.LogInformation("Pool successfully disposed");
     }
 }

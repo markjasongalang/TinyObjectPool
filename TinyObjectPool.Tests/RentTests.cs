@@ -19,8 +19,6 @@ public sealed class RentTests
             {
                 await Task.Delay(2000);
             }
-
-            Assert.AreEqual(1, pool.Count);
         });
 
         await Task.Delay(100); // Ensures task 1 gets the single object from the pool first
@@ -32,10 +30,11 @@ public sealed class RentTests
             // This should block/wait until task 1 above returns the object that it rented so this 
             // task could rent it after
             await using RentedObject<SampleClassWithReset> obj2 = pool.Rent();
-            
         });
 
         await Task.WhenAll(task1, task2);
+
+        Assert.AreEqual(1, pool.Count);
     }
 
     [TestMethod]
